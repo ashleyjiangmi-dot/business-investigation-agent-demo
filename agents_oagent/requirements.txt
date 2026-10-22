@@ -1,0 +1,18 @@
+# 运行依赖：Agent 服务、工具数据服务及知识索引构建与检索。
+# 安装：pip install -r agents_oagent/requirements.txt
+
+# Agent SDK 与 HTTP 服务
+openai-agents==0.22.3
+openai==3.16.0
+fastapi==0.141.1
+uvicorn==0.53.0
+httpx==0.28.1
+
+# 知识索引构建与检索
+chromadb==1.5.9
+sentence-transformers==6.1.0
+PyYAML==6.0.3
+langchain-text-splitters==1.1.2
+
+# 本地 stdio MCP 查询工具服务
+mcp==2.2.0

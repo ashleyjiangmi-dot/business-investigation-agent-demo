@@ -1,0 +1,2251 @@
+:root {
+  --bg: #f5f5f7;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #d2d2d7;
+  --accent: #0071e3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 28px 64px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ececf0;
+  margin-bottom: 18px;
+}
+
+.card-heading h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* 单列：调查输入在上、调查结果在下，让长商品名/指标读数/数据表拿到整幅宽度 */
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.card {
+  min-width: 0;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
+  align-self: start;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-label .optional-mark {
+  display: inline;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.field--question textarea {
+  min-height: 142px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.trace-heading h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.scope-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+  margin-top: 18px;
+}
+
+.field--product-scope {
+  grid-column: 1 / -1;
+}
+
+/* 跨周期分析两期选择下方的一行说明：澄清「本轮只查所选两期」，非提示语噪音 */
+.period-pair-hint {
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* BE03：表单改动未提交时的如实提示（结果区仍对应上次提交条件），与说明文字同族、低强调 */
+.form-dirty-note {
+  margin: 10px 0 0;
+  color: var(--accent);
+}
+
+/* 可选设置（经营周期 / 对比基准）：默认收起的轻量折叠入口，展开后沿用原控件 */
+.advanced-fields {
+  border-top: 1px solid #ececf0;
+  padding-top: 12px;
+  margin-top: 18px;
+}
+
+.advanced-fields summary {
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.advanced-fields summary:hover {
+  color: var(--accent);
+}
+
+.advanced-fields-body {
+  padding-top: 14px;
+}
+
+/* 展开后的两个周期选择器并排（与商品/范围同一网格口径；窄屏已在下方改单列） */
+.period-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.primary-button {
+  flex: none;
+  min-width: 132px;
+  font-weight: 600;
+}
+
+.result-heading {
+  margin-bottom: 18px;
+}
+
+.status-pill {
+  flex: none;
+  padding: 5px 10px;
+  color: var(--muted);
+  background: #f5f5f7;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.status-running {
+  color: #005dbb;
+  background: #edf5ff;
+}
+
+.status-complete {
+  color: #16733a;
+  background: #edf8f0;
+}
+
+.status-failed {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.status-review {
+  color: #8a5a00;
+  background: #fff7e5;
+}
+
+.empty-result,
+.trace-empty {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.empty-result {
+  padding: 16px 0 24px;
+  margin: 0;
+}
+
+.trace-section {
+  border-top: 1px solid #ececf0;
+  margin-top: 22px;
+  padding-top: 16px;
+}
+
+.trace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.trace-heading .steps-toggle {
+  margin: 0;
+}
+
+.trace-empty {
+  margin: 0;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 14px;
+  margin: 20px 0 8px;
+}
+
+.hint,
+.notice {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 18px;
+  word-break: break-all;
+}
+
+label {
+  display: block;
+  margin-bottom: 14px;
+}
+
+label span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--fg);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* 组合框：下拉选择统一形态（商品/范围、比较对象可输入过滤；周期/场景只读选择） */
+.combobox {
+  position: relative;
+}
+
+.combobox-input {
+  width: 100%;
+  padding: 10px 34px 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--fg);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+/* 只读选择模式：不可打字，但整框可点击展开 */
+.combobox-input[readonly] {
+  cursor: pointer;
+}
+
+.combobox-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.combobox-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 2px 8px;
+  width: auto;
+  height: auto;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.combobox-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.combobox-option {
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--fg);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combobox-option.is-active {
+  background: var(--bg);
+}
+
+.combobox-option.is-selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 禁用项（如两期下拉中冲突的周期）：置灰不可选，放在 is-selected 之后以覆盖选中色 */
+.combobox-option.is-disabled {
+  color: var(--muted);
+  font-weight: 400;
+  cursor: not-allowed;
+}
+
+.combobox-option.is-disabled.is-active {
+  background: transparent;
+}
+
+.combobox-empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+button {
+  margin-top: 6px;
+  padding: 10px 20px;
+  font: inherit;
+  font-size: 14px;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 980px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: var(--line);
+  cursor: default;
+}
+
+.toggle {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 980px;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.steps li {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px dashed #ececf0;
+  padding: 2px 0;
+}
+
+.steps .mark {
+  width: 14px;
+  color: var(--muted);
+  flex: none;
+}
+
+.steps .running .mark {
+  color: var(--accent);
+}
+
+.steps .planned .text {
+  color: var(--muted);
+}
+
+.steps .failed .mark,
+.steps .failed .text {
+  color: #d70015;
+}
+
+/* 展示层合并的连续重复步骤：次数提示低强调，不改动过程本身的原文。 */
+.steps .step-repeat {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+/* —— 精简结果卡（UI03）—— */
+
+/* 主结论来自 summary 首段：首段用稍大字号与字重建立层级，其余段与展开段保持正文阅读字号
+   （不恢复 answer_line，也不用夸张大标题）。 */
+.conclusion p {
+  font-size: 15px;
+  line-height: 1.65;
+  font-weight: 400;
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+
+.conclusion p.conclusion-lead {
+  margin: 2px 0 12px;
+  font-size: 19px;
+  line-height: 1.55;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* 结论超过两段时的其余段落：默认折叠，展开后按正文级别显示（文字仍是模型原文） */
+.conclusion .more {
+  margin: -6px 0 18px;
+}
+
+.conclusion .more summary {
+  width: fit-content;
+  font-size: 14px;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.conclusion .more p {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.65;
+  margin: 12px 0 0;
+}
+
+/* 主回答里的完整数据表格：整表默认折叠，展开后在折叠入口下方整块显示 */
+.conclusion .summary-table .table-scroll {
+  margin: 10px 0 0;
+}
+
+.block {
+  border-top: 1px solid #ececf0;
+  padding: 14px 0;
+}
+
+.block h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.findings,
+.actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.findings li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 0;
+}
+
+/* UIX10C 用户裁定：内容前一律不加点——findings 段间「·」分隔随值前状态点同批废止（间隙已承担分隔） */
+.actions {
+  list-style: decimal inside;
+}
+
+.actions li,
+.boundary li {
+  padding: 4px 0;
+}
+
+.boundary {
+  border-top: 1px solid #ececf0;
+  padding: 14px 0;
+  font-size: 14px;
+}
+
+.boundary summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.boundary ul {
+  margin: 10px 0 0;
+  padding-left: 0;
+  list-style: none;
+  line-height: 1.6;
+}
+
+.toggle.link {
+  margin-top: 14px;
+  padding: 6px 0;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  font-size: 14px;
+}
+
+/* —— 生成中与错误态 —— */
+
+.notice.error {
+  color: #d70015;
+  font-size: 14px;
+}
+
+/* 极简原因：一句话分类，不带 stack / 不带上游正文 */
+.notice.error .reason {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 8px;
+}
+
+.streaming .pulse {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 8px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.streaming .pulse::after {
+  content: '…';
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming .pulse {
+    animation: none;
+  }
+}
+
+.stream-text {
+  margin: 0;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+}
+
+/* —— 本次调查范围（结果区轻量文字，不占卡片） —— */
+
+.investigation-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #ececf0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.investigation-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.investigation-scope-row dt {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.investigation-scope-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.md {
+  font-size: 14px;
+  line-height: 1.7;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.md h2 {
+  font-size: 16px;
+  margin: 18px 0 8px;
+}
+
+.md h3,
+.md h4,
+.md h5 {
+  font-size: 14px;
+  margin: 16px 0 6px;
+}
+
+.md p {
+  margin: 0 0 10px;
+}
+
+.md ul,
+.md ol {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.md table {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+/* 完整表格按需横向滚动（只做溢出容器，不额外加边框/内边距，保持既有视觉） */
+.md-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.md th,
+.md td {
+  text-align: left;
+  padding: 5px 10px 5px 0;
+  border-bottom: 1px solid #ececf0;
+}
+
+.md blockquote {
+  margin: 0 0 12px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid #ececf0;
+  margin: 16px 0;
+}
+
+/* —— UIX04 结构化结果组件（沿 UIX02 浅色桌面风格；全部内容为服务端合同原文）—— */
+
+.plain-finding {
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 6px 0;
+}
+
+/* ① 指标变化卡：名称、两期数值、变化、单位——一格一事实，桌面优先自适应 */
+.metric-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.metric-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #fbfbfd;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.metric-name {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.delta-reading {
+  display: block;
+}
+
+.delta-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 2px;
+}
+
+.delta-change {
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.delta-refs {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ②③ 表格与候选列表：宽表横向滚动，长商品名单元格任意断行不溢出 */
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid #ececf0;
+  border-radius: 12px;
+  padding: 4px 14px;
+  margin: 6px 0;
+}
+
+.compare-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.compare-table th,
+.compare-table td {
+  text-align: left;
+  font-weight: 400;
+  padding: 7px 12px 7px 0;
+  border-bottom: 1px solid #ececf0;
+  vertical-align: top;
+}
+
+.compare-table th {
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.compare-table td.cell-name {
+  min-width: 180px;
+  overflow-wrap: anywhere;
+}
+
+.compare-table td.cell-basis {
+  min-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.compare-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.candidates {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+}
+
+.candidate {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  background: #fbfbfd;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cand-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cand-reading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 3px;
+}
+
+.cand-basis {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* 重要限制：含缺失/不可比/分母/覆盖/unknown 字样时默认可见（不允许默认全隐藏） */
+.risk-caveats {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.risk-caveats li {
+  padding: 3px 0;
+}
+
+.conflict-note {
+  margin: 0 0 10px;
+}
+
+@media (max-width: 620px) {
+  .app-shell {
+    padding: 28px 16px 40px;
+  }
+
+  .page-header h1 {
+    font-size: 26px;
+  }
+
+  .card {
+    border-radius: 15px;
+    padding: 20px;
+  }
+
+  .scope-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .period-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .field--product-scope {
+    grid-column: auto;
+  }
+
+  .submit-row {
+    align-items: flex-start;
+  }
+}
+
+/* —— UIX04B 运营可读性与原始数据依据回查（零新框架，沿用浅色桌面风格）—— */
+
+/* 正文/组件里的 [E#] 可点击 chip：UIX04B 修复轮起显示业务文案「查看依据」，E 编号进技术追溯 */
+.cite-chip {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #eef3fb;
+  color: var(--accent, #2f6bd8);
+  font: inherit;
+  font-size: 0.92em;
+  padding: 0 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cite-chip:hover {
+  border-color: #c7d6f0;
+}
+
+.cite-chip.active {
+  background: var(--accent, #2f6fdb);
+  color: #fff;
+}
+
+/* missing（已登记但未能回查定位）：可点开看原因，但形态自证不可核对，不伪装有效依据 */
+.cite-chip.unavailable {
+  background: #f6f1e3;
+  color: #8a6d1f;
+  border-color: #d8b84e;
+  border-style: dashed;
+}
+
+.cite-chip.unavailable.active {
+  background: #b99a3e;
+  color: #fff;
+}
+
+/* 无法回查的引用（旧流/未登记/投影形状不符被丢弃）：非可点击的状态标记 */
+.cite-plain.unavailable {
+  font-size: 0.92em;
+  color: #8a6d1f;
+  border-bottom: 1px dashed #d8b84e;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* —— T03 轻量引用：正文/数据行/证据清单只显示浅灰方括号编号 `[1]` ——
+   无底色、无边框、不用胶囊按钮；字号略小、上标位置，紧跟被引用的结论或读数；
+   点击展开同一条数据依据（悬停 title 给来源摘要，移动端靠点击，不依赖悬停）。 */
+.cite-num {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0 1px;
+  margin-left: 2px;
+  font: inherit;
+  font-size: 0.8em;
+  line-height: 1;
+  vertical-align: super;
+  color: #8b93a1;
+  cursor: pointer;
+}
+
+.cite-num:hover,
+.cite-num:focus-visible {
+  color: var(--accent, #2f6bd8);
+  text-decoration: underline;
+}
+
+.cite-num.active {
+  color: var(--accent, #2f6bd8);
+  font-weight: 600;
+}
+
+/* missing（已登记但未能回查定位）：保留可点开看原因，但形态自证不可核对，不给正常编号 */
+.cite-num.unavailable {
+  font-size: 0.92em;
+  vertical-align: baseline;
+  color: #8a6d1f;
+  border-bottom: 1px dashed #d8b84e;
+  cursor: help;
+}
+
+/* —— EC01 文字引用入口：关键事实本身即入口 ——
+   正文同字号/同色/正常行高，只留克制下划线；不加编号、底色、边框或浮层。 */
+.cite-text {
+  appearance: none;
+  display: inline;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #c8d0dc;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.cite-text:hover,
+.cite-text:focus-visible {
+  color: var(--accent, #2f6bd8);
+  text-decoration-color: currentColor;
+}
+
+/* 行内 button 的原生 outline 会横跨整行，无法准确标示文字范围；
+   焦点态改用更粗的强调色下划线，指示仍落在事实文字本身。 */
+.cite-text:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.cite-text.active {
+  color: var(--accent, #2f6bd8);
+  text-decoration-color: currentColor;
+}
+
+/* missing / 未登记：仍可阅读或查看原因，但形态自证不可核对，不伪装成正常读数 */
+.cite-text.unavailable {
+  color: #8a6d1f;
+  text-decoration-color: #d8b84e;
+  text-decoration-style: dashed;
+  cursor: help;
+}
+
+.cite-text.unavailable:hover,
+.cite-text.unavailable:focus-visible {
+  color: #8a6d1f;
+  text-decoration-color: #b99a3e;
+}
+
+/* T02：连续日读数序列（逐日值就近展开，日期原样、unknown 状态原样） */
+.kr-series {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.88em;
+  color: #5a6472;
+  word-break: break-all;
+}
+
+.cite-open {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* 「查看依据」详情定位锚点（page.tsx scrollIntoView 目标）：留出视口顶边距；
+   焦点只承担位置提示（滚动到位即指示），锚点本身不画焦点圈 */
+.evidence-anchor {
+  scroll-margin-top: 8px;
+}
+
+.evidence-anchor:focus {
+  outline: none;
+}
+
+/* 数据依据详情区（结果区下方轻量展开，不挤占首页正文） */
+.evidence-detail {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid #dfe6f3;
+  border-left: 3px solid var(--accent, #2f6fdb);
+  border-radius: 8px;
+  background: #f7faff;
+}
+
+.evidence-detail.unavailable {
+  border-left-color: #d8b84e;
+  background: #fdf9ec;
+}
+
+.ed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ed-head h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.ed-close {
+  font-size: 12px;
+}
+
+.ed-lines {
+  margin: 4px 0 8px;
+}
+
+.ed-row {
+  display: grid;
+  grid-template-columns: 128px 1fr;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.ed-row dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ed-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ed-boundary {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.ed-tech {
+  margin-top: 2px;
+}
+
+.ed-tech summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* UIX04B 修复轮：[E#]→canonical 映射行（技术追溯折叠内，正文/标题不再直接展示 E 编号） */
+.ed-tech-map {
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ed-tech code {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* 必要限制：UIX04B 起逐条全部默认可见（risk 词表折叠废止，词表类样式保留兼容旧底件） */
+.caveats-visible {
+  margin: 0 0 8px;
+  padding-left: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.caveats-visible li {
+  padding: 3px 0;
+}
+
+/* —— UIX09 类型化展示块（沿 UIX04 浅色桌面风格；三档徽标、依据折叠与窄屏适配）—— */
+
+.typed-blocks {
+  margin: 4px 0 8px;
+}
+
+.tb-block {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 12px;
+  background: #fbfbfd;
+}
+
+.tb-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.tb-kind {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tb-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tb-badge--ok {
+  color: #16733a;
+  background: #edf8f0;
+}
+
+.tb-badge--warn {
+  color: #8a5a00;
+  background: #fff7e5;
+}
+
+.tb-badge--mute {
+  color: var(--muted);
+  background: #f5f5f7;
+}
+
+.tb-meta {
+  flex: 1 1 100%;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.tb-focus {
+  margin-bottom: 8px;
+}
+
+.kr-row-details {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.kr-row-details summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.kr-row-details > span {
+  display: block;
+  font-weight: 400;
+}
+
+.tb-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 3px 0;
+}
+
+
+
+.tb-line p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* vdo：未核验叙述数字显形（数据区仍为已核验读数，两层不可混同） */
+.tb-banner {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #8a5a00;
+  background: #fff7e5;
+  border: 1px solid #ecd9a8;
+  border-radius: 10px;
+}
+
+.tb-biz {
+  margin: 6px 0 2px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.tb-biz.ok {
+  color: #16733a;
+}
+
+.tb-biz.wait {
+  color: #8a5a00;
+}
+
+.tb-state {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #b42318;
+}
+
+.tb-checks h4,
+.tb-basis-sec h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 10px 0 4px;
+}
+
+/* 读数表比原比较表多出「实际周期/取数方式/依据」列，加宽避免高频横向滚动 */
+.tb-facts {
+  min-width: 760px;
+}
+
+.tb-check-table {
+  min-width: 420px;
+}
+
+.tb-op-result.ok {
+  color: #16733a;
+  font-weight: 600;
+}
+
+.tb-op-result.no {
+  color: #b42318;
+  font-weight: 600;
+}
+
+.tb-op-result.unknown {
+  color: var(--muted);
+}
+
+.tb-degraded {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+.tb-reasons {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+
+.tb-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 6px 0;
+}
+
+/* 核查依据：默认折叠的完整计算底稿（集合成员/排除项/操作数/声明核对/技术追溯） */
+.tb-basis {
+  border-top: 1px dashed var(--line);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.tb-basis > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.tb-basis-sec {
+  margin: 8px 0 4px;
+}
+
+.tb-median {
+  margin: 4px 0 10px;
+}
+
+.tb-median-head {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.tb-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.tb-members li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px dashed #ececf0;
+  overflow-wrap: anywhere;
+}
+
+.tb-member-val {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* 排除项：缺失/冲突不代 0，状态原样给业务语言 */
+.tb-excluded {
+  margin: 4px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: #8a5a00;
+  line-height: 1.6;
+}
+
+.tb-operands,
+.tb-claims,
+.tb-vlines {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* R01：工具权威整体排名（集合级；名次/顺序/原值逐字来自 Data，本层零复算） */
+.tb-rankings {
+  margin: 6px 0 8px;
+}
+
+.tb-ranking {
+  margin: 6px 0 10px;
+}
+
+.tb-ranking-head {
+  margin: 0 0 2px;
+  font-size: 13px;
+}
+
+.tb-ranking-cite {
+  margin-left: 6px;
+}
+
+/* 成员范围：如实标注「本次选中集合」，与全品类刻意区分 */
+.tb-ranking-scope {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.tb-ranking-table {
+  width: 100%;
+  font-size: 13px;
+}
+
+.tb-ranking-table td,
+.tb-ranking-table th {
+  padding: 3px 8px;
+}
+
+.tb-ranking-table td:nth-child(1),
+.tb-ranking-table th:nth-child(1) {
+  width: 5.5em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-ranking-table td:nth-child(3),
+.tb-ranking-table th:nth-child(3) {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-ranking-related {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.tb-ranking-related li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  padding: 2px 0;
+}
+
+.tb-ranking-related-time,
+.tb-ranking-related-state {
+  color: var(--muted);
+}
+
+.tb-ranking-missing-list {
+  margin: 5px 0;
+  padding-left: 18px;
+  color: #8a5a00;
+  font-size: 12.5px;
+}
+
+.tb-ranking-missing-list li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.tb-ranking-empty-detail {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tb-ranking-baseline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 4px 0;
+  font-size: 12.5px;
+}
+
+/* 缺失成员：不挤成榜单尾名，状态原样给业务语言（不代 0） */
+.tb-ranking-missing td {
+  color: #8a5a00;
+}
+
+.tb-operands li,
+.tb-claims li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.tb-op-left {
+  overflow-wrap: anywhere;
+}
+
+.tb-op-mid {
+  color: var(--muted);
+}
+
+.tb-op-reason {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.tb-claim-text {
+  margin-right: 6px;
+}
+
+/* 技术追溯（嵌套折叠）：E 编号与 canonical 引用只在此出现，默认不进可见正文 */
+.tb-tech {
+  margin-top: 6px;
+}
+
+.tb-tech > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tb-tech-list {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tb-tech-list > div {
+  display: flex;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.tb-tech-list dt {
+  flex: none;
+  min-width: 52px;
+}
+
+.tb-tech-list dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+.tb-cite {
+  display: inline-block;
+}
+
+/* —— IX04 结果页模块删并：关键对象数据区、行内口径标注与「依据待核实」标记 —— */
+
+/* 关键对象数据区：候选名单、指标读数与补充结果的唯一默认容器（外层面板套既有卡片）。
+   底色与内层卡片区分层级，内层卡保持既有纸面底色；零内容不产空壳（组件守卫）。
+   与 .tb-block 同款卡片边界（独立类名，不挂 tb-block——tb-block 计数是既有回归判据）。 */
+.tb-data-area {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 12px;
+  background: #f4f6fa;
+}
+
+/* 面板已有 tb-head 承接首行间距，内层合计卡不再重复顶部外边距；末子项不留双倍底距 */
+.tb-data-area > .tb-totals {
+  margin-top: 0;
+}
+
+.tb-data-area > :last-child {
+  margin-bottom: 0;
+}
+
+/* IX04 §行为2：首屏多行口径不一致时，本行周期与取数方式贴着本行读数就近标明 */
+.kr-caliber {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+  font-variant-numeric: normal;
+  line-height: 1.45;
+}
+
+/* IX04 §行为5：含 IX03 局部提示的默认位——只标「依据待核实」，原文进可展开详情（不改写、
+   不截断）。文案由实体元素承载（不用伪元素内容，遵守 UIX09 边界）；琥珀提示与方向色/错误红区分。 */
+p.unverified-flag,
+span.unverified-flag {
+  display: inline-block;
+  margin: 2px 0 4px;
+  padding: 1px 9px;
+  border: 1px solid #e8c766;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #7a5b00;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.unverified-unit {
+  margin: 4px 0 8px;
+}
+
+.unverified-unit > details.more {
+  margin-top: 2px;
+}
+
+.unverified-unit > details.more > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* —— UIX09A 结果内容组织（组化展示、判断影响项默认可见、正常状态退依据区）—— */
+
+
+
+/* UIX09B：关键结果大浅卡（原型 key-result-card 同族——更大的圆角与留白） */
+.tb-group {
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.tb-group .tb-line {
+  padding: 4px 0;
+}
+
+.tb-group .tb-line p {
+  font-weight: 500;
+}
+
+/* 展示理由（why）退出默认正文后在依据区内按列表呈现 */
+.tb-why {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.tb-why li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+/* 关键发现有类型化块时默认收纳为「完整分析」：展开后仍是模型原文与按形状组件 */
+.full-analysis > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.full-analysis .block,
+.full-analysis h3 {
+  margin-top: 10px;
+}
+
+/* —— 冲突默认边界与关键结果行式（视觉基准＝prototypes/uix09p）—— */
+
+/* degraded 块存在时的首屏中性提示（原型 boundary-section 同族：灰底、不抢占、不用警示红黄） */
+.conclusion-conflict .conflict-line {
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.65;
+  background: var(--bg);
+  border-radius: 12px;
+}
+
+.conclusion-inner {
+  margin-top: 10px;
+}
+
+/* 「原文含待核结论」展开区：与常规完整分析同构，标题语义由文案承载 */
+.full-analysis--unverified > summary {
+  color: #8a5a00;
+}
+
+/* 方向色只进变化值本身（升绿/降红/持平与 unknown 灰）；主读数与整卡中性。
+   UIX10C 用户裁定：值前小圆状态点废止——数字/内容前一律不加点 */
+.direction-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.direction-up {
+  color: #197543;
+}
+
+.direction-down {
+  color: #b42318;
+}
+
+.direction-flat,
+.direction-unknown {
+  color: var(--muted);
+}
+
+/* 关键结果行式（原型 .metric/.comparison 同族）：大浅卡内多行，商品/指标名优先、单位清楚 */
+.kr-rows {
+  margin: 2px 0 4px;
+}
+
+.kr-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.9fr) minmax(150px, 1.4fr) minmax(84px, 0.55fr);
+  align-items: baseline;
+  gap: 8px 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed #ececf0;
+  font-size: 14px;
+}
+
+.kr-row:last-child {
+  border-bottom: 0;
+}
+
+.kr-name {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.kr-values {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.kr-change {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.kr-change .direction-value {
+  font-weight: 700;
+}
+
+/* BE03：商品段内的读数比标题略重一档——「第一眼看结论，第二眼找商品与差值」 */
+.kr-reading .kr-values {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.kr-state {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* —— BE02：商品为第一视觉单位（一个商品一段，段内是该商品的可回查读数；不把 41 条事实当 41 个结果）—— */
+.kr-rows-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kr-group {
+  padding: 6px 0 8px;
+  border-bottom: 1px dashed #ececf0;
+}
+
+.kr-group:last-child {
+  border-bottom: 0;
+}
+
+.kr-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kr-group-head .kr-name {
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.kr-group-readings {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+
+.kr-reading {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.5fr) minmax(150px, 1.6fr) minmax(84px, 0.5fr);
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 3px 0;
+  font-size: 14px;
+}
+
+.kr-reading-metric {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* R02 §1：商品段内其余读数的就近展开入口（与 .kr-more-list 同族折叠样式，不引入新交互框架） */
+.kr-group-more {
+  margin: 2px 0 0;
+}
+
+.kr-group-more > summary {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* —— UIX10B 首屏主回答卡（直答 → 简短经营理由 → 关键数据行；视觉基准＝UIX09B
+   answer-line 同族——同一套字号节奏，不新增页面框架）—— */
+
+/* 直答＝主卡大字（answer-line 同族）；长商品 ID/连续数字可折行，420px 不横向溢出 */
+.pa-focus {
+  margin: 2px 0 8px;
+  font-size: 21px;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* 简短经营理由＝直答下的解释级正文；模型生成内容身份，不冒充核验结论 */
+.pa-why {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+/* 输入区完成后收纳为摘要：只保留上一轮的问题与范围。原「修改问题，重新调查」＋「重新开始」
+   两个胶囊按钮已合并为卡片底部一个文字链接（见 .entry-edit），摘要本身不再纵向堆叠入口，
+   随之删掉它们各带的外边距留白，卡片高度相应收紧。 */
+.entry-summary {
+  display: block;
+}
+
+.entry-summary-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.entry-summary-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.entry-summary-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.entry-summary-value {
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 结果页唯一的新调查入口：卡片底部蓝色文字链接，左对齐，无按钮容器（无底色/边框/胶囊/内边距）。
+   点击只把输入区还原为可编辑表单，上一轮条件仍在表单里；提交走原有 run() 流程。 */
+.entry-edit {
+  display: inline-block;
+  margin: 10px 0 0;
+  padding: 0;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry-edit:hover {
+  text-decoration: underline;
+}
+
+.entry-edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 620px) {
+  .tb-block {
+    padding: 12px;
+  }
+
+  .tb-head {
+    gap: 6px 8px;
+  }
+
+  .tb-badge {
+    white-space: normal;
+  }
+
+  /* 关键结果行窄屏两行排布（原型 .metric 620px 同族） */
+  .kr-row,
+  .kr-reading {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .kr-values {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 13px;
+  }
+
+  .kr-change {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* ---------- BL03：cohort_list 权威集合段（口径行/条件清单/完整名单/未知成员） ---------- */
+
+.tb-cohort {
+  margin: 6px 0 10px;
+}
+
+.tb-cohort-count {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* BI03：命中之外的另两类成员计数（不命中 / 无法判定）分列一行——口径行之下、周期行之上。 */
+.tb-cohort-classes {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.tb-cohort-scope {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* AQ03：首屏三层——周期独立成行；筛选条件给一个标题再列各条（不再逐条写「同时满足：」）。 */
+.tb-cohort-period {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.tb-cohort-conds-title {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tb-cohort-conds {
+  margin: 0 0 8px;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.tb-cohort-conds li::before {
+  content: '· ';
+  color: var(--muted);
+}
+
+.tb-cohort-list,
+.tb-cohort-unknowns {
+  margin: 4px 0 8px;
+}
+
+.tb-cohort-list summary,
+.tb-cohort-unknowns summary {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.tb-cohort-list .table-scroll {
+  margin-top: 8px;
+}
+
+/* AQ02 补修：长名单「查看全部 N 项」展开后，首屏预览表不再与完整权威名单同时铺开——
+   折叠态见前 6 项，展开态只留完整名单（10 项），消除同一名单的两处重复。不支持 :has 的
+   浏览器退化为旧行为（预览与完整名单同屏，数据不丢、不截断）。 */
+.tb-cohort:has(.tb-cohort-list[open]) .tb-cohort-preview {
+  display: none;
+}
+
+.tb-cohort-table th,
+.tb-cohort-table td {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* AQ02：少量名单直接全露时的表头说明；重复集合块的说明行 */
+.tb-cohort-matches-head {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.tb-cohort--repeat {
+  margin: 4px 0 8px;
+}
+
+/* ---------- AQ02：品类两期对比（服务端复算的分组合计，跨块并列） ---------- */
+
+.tb-totals {
+  margin: 8px 0 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.tb-totals-cat {
+  margin: 8px 0 4px;
+}
+
+.tb-totals-catname {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 同一比较周期/商品子集下的多指标合计：一组一张轻量小卡，周期与覆盖范围只写在组头一次。 */
+.tb-total-set {
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  background: #fbfbfd;
+  border: 1px solid #ececf0;
+  border-radius: 12px;
+}
+
+.tb-total-set:last-child {
+  margin-bottom: 0;
+}
+
+.tb-total-set-head {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.tb-total-set-members {
+  margin: 2px 0 4px;
+}
+
+.tb-total-set-members > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.tb-total-set-members p {
+  margin: 4px 0 0;
+  color: var(--fg);
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.tb-totals-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #ececf0;
+  font-size: 14px;
+}
+
+.tb-totals-row:last-child {
+  border-bottom: 0;
+}
+
+.tb-totals-metric {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 84px;
+}
+
+.tb-totals-sum {
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-totals-row .direction-value {
+  font-weight: 600;
+}
+
+.tb-totals-cov {
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+/* AQ02：候选列表块的重点商品归类与关注理由（模型生成内容身份，归类行以「模型重点归类」标明出处，首屏一行） */
+.tb-focus-line,
+.tb-why-line {
+  margin: 2px 0 6px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.tb-focus-line {
+  font-weight: 600;
+}
+
+/* —— IX04R 经营结果页可读性补修：页面级口径说明、合计口径按需、同口径行证据入口减重、
+      必要限制分层 —— */
+
+/* 页面级 Demo 模拟口径：整页只说明一次（结果卡「必要限制」段不再逐条重复自证）。
+   IX04R 补修轮 §1：低强调——一句业务话术，不做色块/边框卡片，不与业务回答争夺注意力。 */
+.caliber-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* 品类两期对比：首屏只留一句业务口径（实际比较范围），取数细节收进按需详情 */
+.tb-totals-scope {
+  margin: 2px 0 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.tb-totals-detail {
+  margin-top: 6px;
+}
+
+.tb-totals-detail > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* 同组同口径：本组共同周期/取数方式统一给一句，不再逐行铺重复的口径入口 */
+.kr-shared-caliber {
+  margin: 4px 0 0;
+}
+
+/* C03 补修：候选名单读数超首屏上限时的展开入口（总数提示＋原生 details；沿用 .tb-cohort-list
+   同族折叠样式，不引入新交互框架）。展开后总数提示收起——「当前展示 8 项」不再成立，
+   不留在页面上说不准的话。 */
+.kr-more {
+  margin: 6px 0 2px;
+}
+
+.kr-more-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.kr-more-list {
+  margin-top: 2px;
+}
+
+.kr-more-list summary {
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.kr-more-list .kr-rows {
+  margin-top: 4px;
+}
+
+.kr-more:has(.kr-more-list[open]) .kr-more-count {
+  display: none;
+}
+
+/* 必要限制分层：首屏只留影响判断的业务限制；口径自证与取数细节收进按需折叠区（原文逐字保留） */
+.caveats-restated {
+  margin-top: 4px;
+}
+
+.caveats-restated > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.caveats-restated ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.caveats-restated li {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 2px 0;
+}

@@ -1,0 +1,41 @@
+{
+  "fields": [
+    {
+      "variable": "user_question",
+      "label": "经营问题（用自己的话描述要查什么）",
+      "type": "paragraph",
+      "required": true,
+      "max_length": 500,
+      "default": "",
+      "options": []
+    },
+    {
+      "variable": "product_scope",
+      "label": "商品/范围（选择器带入，不从题面猜）",
+      "type": "select",
+      "required": true,
+      "options": []
+    },
+    {
+      "variable": "target_period_id",
+      "label": "经营周期（可选时间上下文；不选时按题面日期/模拟业务日期解释）",
+      "type": "select",
+      "required": false,
+      "options": []
+    },
+    {
+      "variable": "base_period_id",
+      "label": "对比基准（可选）",
+      "type": "select",
+      "required": false,
+      "options": []
+    }
+  ],
+  "metric_labels": {
+    "M1": "订单量",
+    "M2": "播放量",
+    "M3": "点击率",
+    "M4": "千次播放订单 OPM",
+    "M5": "千次播放成交额 GPM"
+  }
+}

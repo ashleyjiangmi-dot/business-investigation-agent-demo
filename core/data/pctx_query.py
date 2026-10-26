@@ -6,8 +6,6 @@
 冲突或身份不一致时阻断取证；单期证据不携带另一周期的状态变化。
 只读、无模型或文件 IO，缺失与不可比不替换为零。"""
 import json
-import os
-import sys
 
 from . import qctx_period as P               # noqa: E402
 from . import period_view_generator as PVG   # noqa: E402

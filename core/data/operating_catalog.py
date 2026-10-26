@@ -37,9 +37,6 @@ PERIODS = (
 )
 PERIOD_IDS = tuple(p['period_id'] for p in PERIODS)
 PERIOD_INDEX = {p['period_id']: p['period_index'] for p in PERIODS}
-# 差值默认基期/末期（命名常量；与 PERIOD_IDS[0]/[1] 恒等，双保险）
-DEFAULT_BASE_PERIOD_ID = 'period_demo_p1'
-DEFAULT_TARGET_PERIOD_ID = 'period_demo_p2'
 
 _PRODUCTS = (
     {'product_id': '10000963504072', 'product_name': '【招牌推荐】脆皮全鸡', 'brand': '',

@@ -1210,10 +1210,20 @@ def mcp_query_input_guardrail(data: ToolInputGuardrailData) -> ToolGuardrailFunc
 
     参数从 `data.context.tool_arguments`（SDK 原样透传的 JSON 字符串）解析；`data.context`
     是 `ToolContext`（`RunContextWrapper` 子类），`data.context.context` 即本 run 的 `RunContext`。
+    参数不是 JSON 对象（畸形 JSON / 数组 / 标量）时按 `mcp_invalid_args` 拒绝——预算闸、
+    步骤登记与额度暂记不得因参数不可解析而整链跳过（fail-closed，不押注 Server 必填兜底）。
     """
     tool_name, args = _guardrail_context(data)
-    if tool_name not in mcp_contract.TOOL_OPS or args is None:
+    if tool_name not in mcp_contract.TOOL_OPS:
         return ToolGuardrailFunctionOutput.allow()
+    if args is None:
+        context = data.context.context
+        context.record_step(step_id=context.new_step_id(), kind='tool', tool=tool_name,
+                            args=None, status='rejected', elapsed_ms=0,
+                            result_code='mcp_invalid_args')
+        return ToolGuardrailFunctionOutput.reject_content(
+            tool_response_text(_mcp_invalid_args_response(
+                ['工具参数不是 JSON 对象（畸形 JSON / 数组 / 标量）'])))
     context = data.context.context
     if getattr(context, 'mcp', None) is None:
         context.record_step(step_id=context.new_step_id(), kind='tool', tool=tool_name,
@@ -1251,7 +1261,22 @@ def mcp_query_output_guardrail(data: ToolOutputGuardrailData) -> ToolGuardrailFu
     第二套错误文案。被调用前钩子 `reject_content` 的调用**不会**到达这里（已跳过）。
     """
     tool_name, args = _guardrail_context(data)
-    if tool_name not in mcp_contract.TOOL_OPS or args is None:
+    if tool_name not in mcp_contract.TOOL_OPS:
+        return ToolGuardrailFunctionOutput.allow()
+    if args is None:
+        # 正常配对下不可达（调用前钩子已按 mcp_invalid_args 拒绝、不会再执行到输出钩子）；
+        # 只兜未配对装配/异常路径：调用已发生但参数不可解析——只做对账与步骤登记，
+        # 不静默跳过；也不回滚额度（无法证明调用前是否暂记过，回滚可能误伤其它调用的暂记）。
+        context = data.context.context
+        resp = _mcp_output_payload(getattr(data, 'output', None))
+        status = tool_call_status(resp) if isinstance(resp, dict) else 'failed'
+        if isinstance(resp, dict) and resp.get('root_budget'):
+            context.note_server_budget(resp)    # 有权威回显则照常校准本地镜像
+        context.record_step(step_id=context.new_step_id(), kind='tool', tool=tool_name,
+                            args=None, status=status, elapsed_ms=0,
+                            result_code=(str(resp.get('error_code') or resp.get('event')
+                                               or 'mcp_invalid_args')
+                                         if isinstance(resp, dict) else 'mcp_invalid_args'))
         return ToolGuardrailFunctionOutput.allow()
     ctx = data.context
     context = ctx.context

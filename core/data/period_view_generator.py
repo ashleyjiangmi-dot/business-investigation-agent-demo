@@ -36,8 +36,8 @@ PERIODS = tuple(
 PERIOD_IDS = tuple(p['period_id'] for p in PERIODS)
 PERIOD_INDEX = {p['period_id']: p['period_index'] for p in PERIODS}
 DEFAULT_PERIOD_ID = 'period_demo_p2'      # 默认经营周期。
-# 差值默认基期/末期命名常量：与 PERIOD_IDS[0]/[1] 恒等（双保险），
-# 8 周期扩容后不显式传周期的差值仍=p1→p2，不静默漂移。
+# 差值默认基期/末期命名常量：与 PERIOD_IDS[0]/[1] 恒等（双保险，钉在
+# agents_oagent/tests/test_sync_nails.py），8 周期扩容后不显式传周期的差值仍=p1→p2，不静默漂移。
 DEFAULT_BASE_PERIOD_ID = 'period_demo_p1'
 DEFAULT_TARGET_PERIOD_ID = 'period_demo_p2'
 
@@ -668,6 +668,11 @@ def build_daily_view(seed=DEFAULT_SEED):
     """
     if not isinstance(seed, int) or isinstance(seed, bool) or seed < 0:
         raise ValueError('seed 必须是非负整数')
+    from datetime import date as _date, timedelta as _timedelta
+    # 新增模拟日末日＝最早目录周期起始日的前一天（由目录推导；此前硬编码 '2026-04-01'
+    # 与首期 2026-04-02 起始日隐式耦合，目录周期改动时会静默错位）。
+    new_day_end = (_date.fromisoformat(min(p['period_start_date'] for p in PERIODS))
+                   - _timedelta(days=1)).isoformat()
     weekly = build_operating_view(seed)
     by_key = {}
     for rec in weekly['records']:
@@ -686,7 +691,7 @@ def build_daily_view(seed=DEFAULT_SEED):
                 days.extend(_split_record_to_days(rec, period, product, seed, variant,
                                                   conflict=conflict))
         base_weekly_m2, _ = _earliest_week_level(product_recs)
-        for dt in date_range(OC.DATA_COVERAGE_START, '2026-04-01'):
+        for dt in date_range(OC.DATA_COVERAGE_START, new_day_end):
             days.append(_simulate_new_day(product, dt, seed, base_weekly_m2))
     days.sort(key=lambda d: (d['date'], d['product_id'], d['variant']))
     return {
@@ -701,9 +706,10 @@ def build_daily_view(seed=DEFAULT_SEED):
         'demo_caliber': DEMO_CALIBER,
         'days': days,
         'notes': [
-            '日级事实是既有周记录（opview-1.3）的确定性日级展开（既有 8 周）+ 新增独立模拟日'
-            '（2026-03-01~2026-04-01）；展开前后逐商品逐指标对账相等（M1 合计、M2 sum(vv)、'
-            'M3 条均、M4/M5 分子分母与 eligible 配对行全部回到原周口径）',
+            ('日级事实是既有周记录（opview-1.3）的确定性日级展开（既有 8 周）+ 新增独立模拟日'
+             '（%s~%s）；展开前后逐商品逐指标对账相等（M1 合计、M2 sum(vv)、'
+             'M3 条均、M4/M5 分子分母与 eligible 配对行全部回到原周口径）'
+             % (OC.DATA_COVERAGE_START, new_day_end)),
             '日间差异来自供给/转化两套星期形状与周内趋势（operating_catalog.DAILY_*），'
             '不是“周总量除以 7”；X1 缺周期不出日事实；X2 缺失字段/None 逐日保留（缺失≠0）；'
             'X3 零分母结构逐日保留；X4 同键双记录 → 每天两条互异日记录',

@@ -6,8 +6,6 @@
 本模块不读取快照、评测索引或外部服务。"""
 import hashlib
 import json
-import os
-import sys
 
 from . import period_view_generator as PVG  # noqa: E402
 
@@ -25,6 +23,17 @@ PERIOD_CHOICES = (PERIOD_CHOICE_P2, PERIOD_CHOICE_P1, PERIOD_CHOICE_BOTH)
 PROPOSER_OPS = ('value', 'diff', 'set_compare', 'states')
 PERIOD_QUERY_KEYS = ('op', 'product_ids', 'period_id', 'metrics', 'metric', 'kind',
                      'base_period_id', 'target_period_id')
+
+# M1–M5 展示口径（业务名/单位/角色）单点：oi03_brief.period_brief 与
+# operating_agent_brief 的两处能力说明共用同一份，改口径只改这里。
+# 数值口径的权威定义在 qctx_period.METRICS；本表只维护对外展示文字。
+METRIC_DISPLAY = (
+    ('M1', {'name': '订单量', 'unit': '单', 'role': '结果'}),
+    ('M2', {'name': '播放量', 'unit': '次', 'role': '过程'}),
+    ('M3', {'name': '点击率', 'unit': '比率（条均，非曝光加权）', 'role': '过程'}),
+    ('M4', {'name': '千次播放订单 OPM', 'unit': '单/千次播放', 'role': '结果'}),
+    ('M5', {'name': '千次播放成交额 GPM', 'unit': '元/千次播放（VV 加权）', 'role': '结果'}),
+)
 
 
 def shared_business_note():
@@ -45,11 +54,7 @@ def period_brief():
                        % (p['period_id'], p['period_label'], p['period_start_date'],
                           p['period_end_date'], p['length_days']) for p in PVG.PERIODS)
     metrics = '；'.join('%s %s（%s，%s）' % (k, v['name'], v['unit'], v['role'])
-                       for k, v in (('M1', {'name': '订单量', 'unit': '单', 'role': '结果'}),
-                                    ('M2', {'name': '播放量', 'unit': '次', 'role': '过程'}),
-                                    ('M3', {'name': '点击率', 'unit': '比率（条均，非曝光加权）', 'role': '过程'}),
-                                    ('M4', {'name': '千次播放订单 OPM', 'unit': '单/千次播放', 'role': '结果'}),
-                                    ('M5', {'name': '千次播放成交额 GPM', 'unit': '元/千次播放（VV 加权）', 'role': '结果'})))
+                       for k, v in METRIC_DISPLAY)
     return (
         'pctx_v1 周期查询能力说明（%s）：\n'
         '[1] 周期：%s。周期是固定模拟周期，不提供真实同比/环比、任意日期滚动或连续趋势。\n'
@@ -124,7 +129,11 @@ def product_scope_labels():
 
 
 def label_to_product_id(label):
-    """选择标签→product_id（确定性）。接受可读名、同名消歧标签与原始 product_id 回放；未知= None。"""
+    """选择标签→product_id（确定性，宽松解析：同名裸名取目录第一个命中）。
+
+    仅供测试/eval 面回放使用，不是入口绑定合同——current 入口的 label→id 绑定走
+    entry_adapter 的同名消歧规则（同名只认「名称（品牌）」消歧标签或 product_id，
+    裸名仅在唯一时接受）。接受可读名、同名消歧标签与原始 product_id 回放；未知= None。"""
     s = str(label or '').strip()
     labels = product_scope_labels()
     for p in PVG.PRODUCTS:
@@ -175,7 +184,8 @@ def brief_json():
 
 __all__ = ['SHARED_BUSINESS_NOTE_VERSION', 'PERIOD_BRIEF_VERSION', 'ENTRY_CONTRACT_VERSION',
            'OPTION_ALL', 'PERIOD_CHOICES', 'PROPOSER_OPS',
-           'PERIOD_QUERY_KEYS', 'CATEGORY_LABEL_PREFIX', 'shared_business_note', 'period_brief',
+           'PERIOD_QUERY_KEYS', 'CATEGORY_LABEL_PREFIX', 'METRIC_DISPLAY',
+           'shared_business_note', 'period_brief',
            'entry_options', 'category_scope_label', 'category_options',
            'label_to_product_id', 'product_scope_labels', 'all_product_ids', 'entry_catalog',
            'brief_hash', 'brief_json']

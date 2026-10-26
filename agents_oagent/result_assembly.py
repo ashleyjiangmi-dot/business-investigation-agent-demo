@@ -185,22 +185,28 @@ def _merge_category_total_fallback(display_blocks: dict | None, snapshots,
                                    run_id: str, user_question: str = '') -> dict | None:
     """品类问题缺少 group_totals 展示块时，将已登记的品类合计快照转为比较块。
 
-    不新增查询或修改正文；普通多商品比较和无有效快照时不补卡片。"""
-    blocks = (display_blocks or {}).get('blocks') if isinstance(display_blocks, dict) else None
-    existing = [b for b in (blocks or []) if isinstance(b, dict)]
+    不新增查询或修改正文；普通多商品比较和无有效快照时不补卡片。
+    未预期异常＝保留原 display_blocks 并记日志（该函数在 run 主 try 内、`finish_display_blocks`
+    之外调用，异常隔离在这里做——不把已发完正文的 run 打成 RUN_ERROR）。"""
+    try:
+        blocks = (display_blocks or {}).get('blocks') if isinstance(display_blocks, dict) else None
+        existing = [b for b in (blocks or []) if isinstance(b, dict)]
 
-    def _has_totals(b: dict) -> bool:
-        rec = b.get('recomputed') if isinstance(b.get('recomputed'), dict) else {}
-        totals = rec.get('group_totals')
-        return isinstance(totals, list) and len(totals) > 0
+        def _has_totals(b: dict) -> bool:
+            rec = b.get('recomputed') if isinstance(b.get('recomputed'), dict) else {}
+            totals = rec.get('group_totals')
+            return isinstance(totals, list) and len(totals) > 0
 
-    if any(_has_totals(b) for b in existing):
+        if any(_has_totals(b) for b in existing):
+            return display_blocks
+        fallback = display_intent.category_total_fallback_blocks(
+            snapshots, run_id, start_index=len(existing), user_question=user_question)
+        if not fallback:
+            return display_blocks
+        if not isinstance(display_blocks, dict):
+            return {'schema': DISPLAY_BLOCKS_SCHEMA, 'run_id': str(run_id or ''),
+                    'parse_status': 'deterministic_fallback', 'blocks': fallback}
+        return {**display_blocks, 'blocks': list(blocks or []) + fallback}
+    except Exception:                                 # noqa: BLE001  兜底失败只弃兜底,不动已核验块
+        log.exception('run %s 品类合计兜底装配异常：保留原 display_blocks', run_id)
         return display_blocks
-    fallback = display_intent.category_total_fallback_blocks(
-        snapshots, run_id, start_index=len(existing), user_question=user_question)
-    if not fallback:
-        return display_blocks
-    if not isinstance(display_blocks, dict):
-        return {'schema': DISPLAY_BLOCKS_SCHEMA, 'run_id': str(run_id or ''),
-                'parse_status': 'deterministic_fallback', 'blocks': fallback}
-    return {**display_blocks, 'blocks': list(blocks or []) + fallback}

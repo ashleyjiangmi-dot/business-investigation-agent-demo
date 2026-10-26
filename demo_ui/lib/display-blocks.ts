@@ -11,7 +11,6 @@ import type {
   DisplayCohort,
   DisplayFact,
   DisplayGroupTotal,
-  DisplaySinglePeriodTotals,
   FilterScope,
   QueryScope,
   WireScalar,
@@ -826,7 +825,7 @@ const SINGLE_PERIOD_READINGS_LABEL = '单期指标读数'
 /** 「声明变化」的块类型：它们的两期比较身份必须有成对读数支撑。 */
 const CHANGE_CLAIM_TYPES: ReadonlySet<string> = new Set(['metric_change'])
 
-function factRow(f: DisplayFact, i: number, scope: TraceScope): FactRowView {
+function factRow(f: DisplayFact, scope: TraceScope): FactRowView {
   const unit = f.unit ?? ''
   const withUnit = (v: WireScalar) => withUnitNum(v, unit ? ` ${unit}` : '')
   const hasPair = Boolean(f.base && f.target)
@@ -943,8 +942,8 @@ export function buildBlockView(b: DisplayBlock, scope: TraceScope): BlockView {
   const declaredSubjects = b.display.subjects.map((s) => String(s))
   // 按块语义限制对象：comparison 的基准成员不套用焦点商品过滤。
   const subjectScoped = SUBJECT_DISPLAY_TYPES.has(b.type) && declaredSubjects.length > 0
-  const rows = b.verified_facts.map((f, i) => ({
-    row: factRow(f, i, scope),
+  const rows = b.verified_facts.map((f) => ({
+    row: factRow(f, scope),
     fact: f,
     inScope: factInDeclaredScope(f, declaredMetrics, declaredPeriods)
       && (!subjectScoped || declaredSubjects.includes(String(f.product_id ?? ''))),

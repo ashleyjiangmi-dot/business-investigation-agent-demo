@@ -65,7 +65,6 @@ export function productSubjectDisplay(name: string, scope: TraceScope | null | u
 const FREE_ID_RE = /\d{8,}/g
 const FREE_SHORT_ID_RE = /(?<![A-Za-z0-9_])0\d{2}(?!\d)/g
 const FREE_METRIC_RE = /(?<![A-Za-z0-9_])M\d+(?![A-Za-z0-9_])/g
-const FREE_PERIOD_RE = /\bperiod_[A-Za-z0-9_]+\b/g
 const FREE_PUBLISHED_RE = /\bpublished\b/gi
 /** 紧邻后文的（…）括注（全角/半角，不跨嵌套）。 */
 const PAREN_GLOSS_RE = /^[（(]([^（）()]+)[）)]/

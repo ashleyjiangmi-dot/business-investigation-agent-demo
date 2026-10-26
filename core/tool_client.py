@@ -39,8 +39,17 @@ def _default_transport(base_url: str) -> Transport:
         except httpx.HTTPError as exc:
             raise ToolHttpError('tool_server 传输错误 %s%s: %s' % (base_url, path, type(exc).__name__)) from exc
         if resp.status_code != 200:
-            raise ToolHttpError('tool_server HTTP %d %s' % (resp.status_code, path),
-                                status=resp.status_code)
+            # 非 200 的响应体可能带结构化 error_code/detail（如 :8099 历史路由的 503 信封、
+            # 网关 5xx 详情页）——截断摘录随异常文本带出，让工具错误面/日志能看到服务端原话；
+            # 读体失败不代造，摘录只进本地日志与错误文本，不进模型可见成功面。
+            try:
+                excerpt = str(resp.text or '').strip()[:400]
+            except Exception:                     # noqa: BLE001  响应体不可读时不阻断错误抛出
+                excerpt = ''
+            message = 'tool_server HTTP %d %s' % (resp.status_code, path)
+            if excerpt:
+                message += ' body: %s' % excerpt
+            raise ToolHttpError(message, status=resp.status_code)
         try:
             return resp.json()
         except ValueError as exc:

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from .data import oi03_brief as OB
 from .data import operating_agent_brief as OAB

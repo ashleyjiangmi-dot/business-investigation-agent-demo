@@ -40,15 +40,25 @@ export async function POST(request: Request) {
   // 客户端生成的稳定 run_id 原样透传（服务端据此复用同一执行/拒绝输入冲突）；
   // 缺省时不传——服务端自建 `as-…`，旧调用形状与旧行为逐字不变。
   const runId = typeof body.run_id === 'string' ? body.run_id.trim() : ''
-  const upstream = await fetch(`${SERVING_URL}/v1/oagent/run`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      inputs,
-      user: body.user || 'demo-ui-local',
-      ...(runId ? { run_id: runId } : {}),
-    }),
-  })
+  let upstream: Response
+  try {
+    upstream = await fetch(`${SERVING_URL}/v1/oagent/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inputs,
+        user: body.user || 'demo-ui-local',
+        ...(runId ? { run_id: runId } : {}),
+      }),
+    })
+  } catch (e) {
+    // 与 GET 恢复同一口径：服务层未启动/网络异常≠请求被拒绝，502＋可区分文案，
+    // 不让路由抛成 Next 泛化 500（页面只见到「服务端拒绝请求」）。
+    return Response.json(
+      { error: '服务层暂时不可达', detail: e instanceof Error ? e.message : String(e) },
+      { status: 502 },
+    )
+  }
 
   if (!upstream.ok || !upstream.body) {
     // 上游的**请求级**拒绝（409 run_id_conflict 等）原样带回来，页面据此给明确提示，
@@ -69,7 +79,8 @@ export async function POST(request: Request) {
     )
   }
 
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '')
+  // 时间戳保留毫秒位：秒级戳在同秒并发时会让两个运行写同名 dump 文件（open 'w' 互截断）。
+  const stamp = new Date().toISOString().replace(/[-:.]/g, '').replace(/Z$/, '')
   const dump = DUMP
     ? {
         raw: path.resolve(RAW_DIR, `stream_${stamp}.sse`),
@@ -178,6 +189,8 @@ function proxyStream(
         }
         if (buffer.trim()) console.warn(`事件流尾部 ${buffer.length} 字符未成帧，已丢弃`)
       } catch (e) {
+        // 浏览器只收 reason_class，具体原因必须留在服务端日志，否则断流无据可查。
+        console.error('事件流转发中断', e)
         await emit(
           `data: ${JSON.stringify({ event: 'error', data: { reason_class: 'proxy_stream_error' } })}\n\n`,
         )

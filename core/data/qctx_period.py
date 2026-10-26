@@ -9,8 +9,6 @@ M4 为 eligible 配对行的订单/播放 ×1000；M5 为 eligible 配对行的�
 import json
 import math
 import operator as _operator
-import os
-import sys
 
 from . import period_view_generator as PVG      # noqa: E402
 from . import period_resolver as PR              # noqa: E402
@@ -596,8 +594,7 @@ def period_diff(product_id, metric, base_period=None, target_period=None, view=N
     两期须同身份、同口径且窗口可比；基期为零时百分比不可用，其它缺失或冲突按原因返回。"""
     view = view if view is not None else build_view()
     metric = _validate_metric(metric)
-    # 默认基期/末期=命名常量；与 PERIOD_IDS[0]/[1] 恒等（operating_catalog
-    # 双保险断言），8 周期扩容后不显式传周期的差值仍=p1→p2，不静默漂移。
+    # 默认基期/末期=命名常量；与 PERIOD_IDS[0]/[1] 恒等（钉在 agents_oagent/tests/test_sync_nails.py），8 周期扩容后不显式传周期的差值仍=p1→p2，不静默漂移。
     base_period = _validate_period_id(base_period or PVG.DEFAULT_BASE_PERIOD_ID)
     target_period = _validate_period_id(target_period or PVG.DEFAULT_TARGET_PERIOD_ID)
     pid = str(product_id)

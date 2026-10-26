@@ -12,6 +12,7 @@ import json
 import logging
 import time
 import uuid
+from collections import deque
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
@@ -42,12 +43,14 @@ log = logging.getLogger('agents_oagent.server')
 SERVING_NAME = 'agents_oagent'
 WIRE_SCHEMA = 'lg_wire_v1'
 RUN_ID_PREFIX = 'as-'
-RUN_ERROR = 'run_error'
+# 单点＝runtime（多处独立字面量是比对漂移点）。
+RUN_ERROR = runtime.RUN_ERROR
 
 # 重复 ID 仅允许复用同输入运行；不同输入返回 409。
-# 未知或已淘汰 ID 返回 404，不重建任务。完成记录按创建顺序淘汰，运行中记录保留。
+# 未知或已淘汰 ID 返回 404，不重建任务：GET 直接 404；POST 由登记表的淘汰墓碑拦截
+# （同样 404），两端点口径一致。完成记录按创建顺序淘汰，运行中记录保留。
 RUN_ID_CONFLICT = 'run_id_conflict'   # 同 ID 不同输入：409，不执行、不覆盖原运行
-RUN_UNKNOWN = 'run_unknown'           # GET 未知 ID（含服务重启后旧 ID）：404，不创建任务
+RUN_UNKNOWN = 'run_unknown'           # 未知/已淘汰 ID：404，不创建任务（GET 与 POST 同口径）
 RUN_RETENTION = 32
 # 订阅者续看已运行帧的轮询间隔：游标式取帧，只在无新帧时等待。不用 Event/Condition 是为了
 # 不把 loop 绑定的原语留在跨请求共享的记录上（同一 app 可能在测试里跨事件循环使用）。
@@ -60,6 +63,9 @@ DISPLAY_VERIFY_TIMEOUT_S = 10.0
 
 # per-run 登记件（本地 out/，gitignore；不进 SSE、不进 result_json 键集合）
 RUN_LEDGER_PATH = Path(__file__).resolve().parent / 'out' / 'run_ledger.jsonl'
+# stub 装配的默认落点：ScriptedModel 的 usage 是固定假值（100/20 tokens），与真机
+# run_ledger 分文件存放，真假台账不混流；测试/调用方仍可用 run_ledger_path 显式改写。
+RUN_LEDGER_STUB_PATH = RUN_LEDGER_PATH.with_name('run_ledger_stub.jsonl')
 USAGE_LEDGER_PATH = Path(__file__).resolve().parent / 'out' / 'usage.jsonl'
 
 CtxFetcher = Callable[[], dict]
@@ -106,9 +112,16 @@ class RunRegistry:
     def __init__(self, retention: int = RUN_RETENTION) -> None:
         self._records: dict[str, _RunRecord] = {}
         self._retention = max(1, int(retention))
+        # 淘汰墓碑（有界 FIFO）：已淘汰 ID 的 POST 不静默重建执行（与 GET 404 同口径）。
+        # 只覆盖近期淘汰——超出容量的最旧墓碑过期后回到「未知」，与无墓碑时期行为一致。
+        self._tombstones: deque[str] = deque(maxlen=max(8 * self._retention, 64))
 
     def get(self, run_id: str) -> _RunRecord | None:
         return self._records.get(run_id)
+
+    def evicted(self, run_id: str) -> bool:
+        """该 ID 是否已被保留上限淘汰：POST 据此拒绝重建执行（不重跑、不重新计费）。"""
+        return run_id in self._tombstones
 
     def create(self, run_id: str, fingerprint: str) -> _RunRecord:
         record = _RunRecord(run_id, fingerprint)
@@ -132,6 +145,7 @@ class RunRegistry:
                           key=lambda r: r.created_at)
         for old in finished[:max(0, len(finished) - self._retention)]:
             self._records.pop(old.run_id, None)
+            self._tombstones.append(old.run_id)
 
 
 def _failed_frame(result_status: str) -> str:
@@ -268,7 +282,12 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
         if not isinstance(body, dict):
             return JSONResponse({'ok': False, 'error_code': 'invalid_request_body',
                                  'detail': '请求体必须是 JSON 对象'}, status_code=400)
-        inputs = body.get('inputs') if isinstance(body.get('inputs'), dict) else {}
+        if 'inputs' in body and not isinstance(body['inputs'], dict):
+            # inputs 存在但不是对象＝请求形状错误：明确 400，不静默降 {} 抢注 run_id
+            # （否则同 ID 稍后带正确 inputs 重发会被 409 挡住，且指纹绑在空 inputs 上）。
+            return JSONResponse({'ok': False, 'error_code': 'invalid_request_body',
+                                 'detail': 'inputs 必须是 JSON 对象'}, status_code=400)
+        inputs = body.get('inputs') or {}
         run_id = (str(body.get('run_id') or '').strip()
                   or '%s%s' % (RUN_ID_PREFIX, uuid.uuid4().hex[:12]))
         fingerprint = _input_fingerprint(inputs)
@@ -280,6 +299,14 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
             return JSONResponse({'ok': False, 'error_code': RUN_ID_CONFLICT,
                                  'detail': '该运行标识已用于另一次输入；如需新调查请重新开始'},
                                 status_code=409)
+        if record is None and registry.evicted(run_id):
+            # 已淘汰 ID＝回到「未知」语义：GET 404，POST 同样拒绝重建执行，
+            # 不静默重跑（与登记表「同 ID 同输入只执行一次」合同一致）。
+            log.info('run %s 已淘汰：POST 拒绝重建执行', run_id)
+            return JSONResponse({'ok': False, 'error_code': RUN_UNKNOWN,
+                                 'detail': '该运行记录已完成并超出本地保留范围；'
+                                           '如需再次调查请用新的运行标识重新发起'},
+                                status_code=404)
         if record is None:
             record = registry.create(run_id, fingerprint)
             try:
@@ -311,6 +338,9 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
         run_id = record.run_id
         push = record.push
         started = time.monotonic()
+        # 在大 try 之前初始化：任何阶段的未预期异常都要能引用二者做补记账与终态收尾。
+        result: runtime.AgentRunResult | None = None
+        persisted = False
         try:
             push(_sse({'event': 'run_started', 'data': {
                 'run_id': run_id, 'ts': time.strftime('%Y-%m-%dT%H:%M:%S%z')}}))
@@ -341,7 +371,6 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
                 push(_failed_frame(RUN_ERROR))
                 return
 
-            result: runtime.AgentRunResult | None = None
             try:
                 agen = runtime.astream_agent(asm['run_input'], client=run_client,
                                              retriever=knowledge_retriever, model=run_model,
@@ -367,6 +396,7 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
                 # 初始化失败、缺运行 ID 或空终答时不执行守卫与投影，直接交付失败终态。
                 view = run_wire_view(result, {})
                 _persist(run_id, result, view, {}, elapsed_ms)
+                persisted = True
                 if (result.error or {}).get('code') == RUN_ERROR:
                     push(_sse({'event': 'error', 'data': {'reason_class': RUN_ERROR}}))
                 push(_sse({'event': 'run_finished', 'data': {
@@ -385,6 +415,7 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
             view = run_wire_view(result, projection)
             citations, hidden = _citations_wire(result_json)
             _persist(run_id, result, view, projection, elapsed_ms)
+            persisted = True
 
             md = result_json['final_answer']
             for i in range(0, len(md), max(1, answer_chunk_chars)):
@@ -392,54 +423,79 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
                            'data': {'text': md[i:i + answer_chunk_chars]}}))
                 if answer_chunk_delay:
                     await asyncio.sleep(answer_chunk_delay)
-            # 正文发送完成后再等待展示核验；失败或超时仅影响展示块。
-            display_blocks = await finish_display_blocks(
-                client=run_client, run_id=run_id, final_text=result.final_output,
-                timeout_s=display_verify_timeout_s)
-            # 模型再次不输出 display intent（或产了但完全没有 group_totals）时，页面仍须
-            # 出现  已算出的多商品品类聚合——用 RunContext 运行期快照做确定性兜底（diff 与
-            # value×2 路径都覆盖）；模型自己已给出品类合计时原样使用、不追加。只有问题点名品类
-            # （目录品类名/「品类」）才触发，普通多商品比较题不加卡。
-            display_blocks = _merge_category_total_fallback(
-                display_blocks, getattr(result.run_context, 'category_total_snapshots', None),
-                run_id, user_question=str((asm['run_input'] or {}).get('user_question') or ''))
-            # /：正文 Guard 结果保持原样；已核验展示事实与正文 accepted 一次合并回查，
-            # 让正文未引用的 rank/aux/median 展示依据仍可从 evidence_details 打开。
-            evidence_details = await asyncio.to_thread(
-                project_evidence_details, client=run_client, run_id=run_id,
-                result_json=result_json, display_blocks=display_blocks)
-            push(_sse({'event': 'run_finished', 'data': {
-                'status': result.status, 'answer_md': md,
-                'citations': citations, 'result_status': _result_status(view, result_json),
-                'has_business_answer': has_business_answer(result_json),
-                # 可选**本轮实际调查范围与比较基准**投影。来源＝运行期台账 `RunContext.query_scopes`（每次成功
-                # 查询登记的实际请求成员），产出「调查对象并集 + 指标→成员 + set_compare 基准集合 +
-                # cohort 筛选范围」；不同指标实际范围不同时逐指标保留，不合并成单一范围。无成功
-                # 查询=缺键（旧 SSE 兼容）。键面单点＝`core.wire_contract.query_scope_wire`。
-                'query_scope': query_scope_wire(
-                    getattr(result.run_context, 'query_scopes', None)),
-                # 可选结构化报告，绑定上面同一份已清洗、经 Guard 处理的终答正文
-                # （result_json.final_answer=redact 之后）；不满足最小形状=None（旧 answer_md 路径不变）。
-                'hidden_in_answer': hidden,
-                # 证据详情不可用时保留正文与引用清单。
-                # answer_line 需通过结论头位、长度与逐字匹配检查；有意图区但未给字段时才尝试提取首句。
-                # 短结论与展示块分别交付，不互相依赖。
-                'report': report_with_answer_line(
-                    build_report(str(result_json.get('final_answer') or '')),
-                    *display_intent.answer_line_signals(result.final_output)),
-                # 知识来源：本 run 通过 knowledge_search 实际返回的文档（doc_id/title/doc_type，
-                # 按首次返回顺序去重）。供前端把正文 `[GUIDE01]` 渲染为可点「指南 1」；不进
-                # Evidence Guard，不携带正文/片段。无检索成功记录=缺键（旧 SSE 兼容）。
-                'knowledge_sources': knowledge_sources_wire(
-                    getattr(result.run_context, 'knowledge_sources', None)),
-                'evidence_details': evidence_details,
-                # 可选类型化展示块（本 run 独立送检+回查+封闭复算后的核验结果，
-                # `core.wire_contract.DISPLAY_BLOCKS_SCHEMA` 键面）；无意图/失败/超时=None。
-                'display_blocks': display_blocks}}))
+
+            # 正文已推送后的终态装配失败不把已交付 run 翻成 failed：可选键降级为 None、
+            # 保持 succeeded 终态（下游对 display_blocks/evidence_details/report 各自带降级；
+            # 成功台账行与终态不一致比缺一屏展示块伤害更大）。
+            try:
+                # 正文发送完成后再等待展示核验；失败或超时仅影响展示块。
+                display_blocks = await finish_display_blocks(
+                    client=run_client, run_id=run_id, final_text=result.final_output,
+                    timeout_s=display_verify_timeout_s)
+                # 模型再次不输出 display intent（或产了但完全没有 group_totals）时，页面仍须
+                # 出现  已算出的多商品品类聚合——用 RunContext 运行期快照做确定性兜底（diff 与
+                # value×2 路径都覆盖）；模型自己已给出品类合计时原样使用、不追加。只有问题点名品类
+                # （目录品类名/「品类」）才触发，普通多商品比较题不加卡。
+                display_blocks = _merge_category_total_fallback(
+                    display_blocks, getattr(result.run_context, 'category_total_snapshots', None),
+                    run_id, user_question=str((asm['run_input'] or {}).get('user_question') or ''))
+                # /：正文 Guard 结果保持原样；已核验展示事实与正文 accepted 一次合并回查，
+                # 让正文未引用的 rank/aux/median 展示依据仍可从 evidence_details 打开。
+                evidence_details = await asyncio.to_thread(
+                    project_evidence_details, client=run_client, run_id=run_id,
+                    result_json=result_json, display_blocks=display_blocks)
+                final_data = {
+                    'status': result.status, 'answer_md': md,
+                    'citations': citations, 'result_status': _result_status(view, result_json),
+                    'has_business_answer': has_business_answer(result_json),
+                    # 可选**本轮实际调查范围与比较基准**投影。来源＝运行期台账 `RunContext.query_scopes`（每次成功
+                    # 查询登记的实际请求成员），产出「调查对象并集 + 指标→成员 + set_compare 基准集合 +
+                    # cohort 筛选范围」；不同指标实际范围不同时逐指标保留，不合并成单一范围。无成功
+                    # 查询=缺键（旧 SSE 兼容）。键面单点＝`core.wire_contract.query_scope_wire`。
+                    'query_scope': query_scope_wire(
+                        getattr(result.run_context, 'query_scopes', None)),
+                    # 可选结构化报告，绑定上面同一份已清洗、经 Guard 处理的终答正文
+                    # （result_json.final_answer=redact 之后）；不满足最小形状=None（旧 answer_md 路径不变）。
+                    'hidden_in_answer': hidden,
+                    # answer_line 需通过结论头位、长度与逐字匹配检查；有意图区但未给字段时才尝试提取首句。
+                    # 短结论与展示块分别交付，不互相依赖。
+                    'report': report_with_answer_line(
+                        build_report(str(result_json.get('final_answer') or '')),
+                        *display_intent.answer_line_signals(result.final_output)),
+                    # 知识来源：本 run 通过 knowledge_search 实际返回的文档（doc_id/title/doc_type，
+                    # 按首次返回顺序去重）。供前端把正文 `[GUIDE01]` 渲染为可点「指南 1」；不进
+                    # Evidence Guard，不携带正文/片段。无检索成功记录=缺键（旧 SSE 兼容）。
+                    'knowledge_sources': knowledge_sources_wire(
+                        getattr(result.run_context, 'knowledge_sources', None)),
+                    'evidence_details': evidence_details,
+                    # 可选类型化展示块（本 run 独立送检+回查+封闭复算后的核验结果，
+                    # `core.wire_contract.DISPLAY_BLOCKS_SCHEMA` 键面）；无意图/失败/超时=None。
+                    'display_blocks': display_blocks}
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:                      # noqa: BLE001  已交付正文的终态装配降级
+                log.exception('run %s 终态装配异常（正文已交付）：可选键降级为 None，'
+                              '保持成功终态：%s: %s', run_id, type(exc).__name__, exc)
+                final_data = {
+                    'status': result.status, 'answer_md': md,
+                    'citations': citations, 'result_status': _result_status(view, result_json),
+                    'has_business_answer': has_business_answer(result_json),
+                    'query_scope': None, 'hidden_in_answer': hidden, 'report': None,
+                    'knowledge_sources': None, 'evidence_details': None,
+                    'display_blocks': None}
+            push(_sse({'event': 'run_finished', 'data': final_data}))
         except asyncio.CancelledError:
             raise
         except Exception as exc:                          # noqa: BLE001  未预期异常也要给终态
             log.exception('run %s 未预期异常：%s: %s', run_id, type(exc).__name__, exc)
+            if result is not None and not persisted:
+                # 已计费的 run 在投影/装配前抛异常时也要落台账：终态按失败登记（usage 如实
+                # 记账，不因收尾异常漏账）；`persisted` 保证成功路径不重复登记/重复计费。
+                result.status = 'failed'
+                result.error = {'stage': 'post_process', 'code': RUN_ERROR,
+                                'exception_type': type(exc).__name__, 'detail': str(exc)}
+                _persist(run_id, result, run_wire_view(result, {}),
+                         {}, int((time.monotonic() - started) * 1000))
             push(_sse({'event': 'error', 'data': {'reason_class': RUN_ERROR}}))
             push(_failed_frame(RUN_ERROR))
         finally:
@@ -469,107 +525,3 @@ ledger=None 时不写费用台账；实时服务装配显式提供账本。"""
     app.state.run_registry = registry
     return app
 
-
-# ---------- stub 装配（零真机、零模型调用、零 :8099 触碰） ----------
-
-def scripted_model(turns: list[dict], *, tokens: tuple[int, int] = (100, 20)) -> Any:
-    """轮次脚本形状（`{'content', 'tool_calls'}`，与 `current_demo_turns` 同源）→ SDK
-    `ScriptedModel` 步骤；仅 stub 装配与本地验收使用（SDK 自带确定性替身，非 provider 适配层）。
-
-    一轮=该轮 assistant 正文（可空）+ 若干工具调用；usage 给固定假值（只证合同，不是真机 token）。
-    """
-    from agents.testing import ScriptedModel, assistant_message, function_call
-    from agents.usage import Usage
-
-    usage = Usage(input_tokens=tokens[0], output_tokens=tokens[1],
-                  total_tokens=tokens[0] + tokens[1])
-    steps: list[dict] = []
-    seq = 0
-    for turn in turns:
-        items: list[Any] = []
-        text = str(turn.get('content') or '')
-        if text:
-            items.append(assistant_message(text))
-        for call in turn.get('tool_calls') or []:
-            seq += 1
-            items.append(function_call(str(call['name']), call.get('arguments') or {},
-                                       call_id=str(call.get('id') or 'c%d' % seq)))
-        steps.append({'output': items, 'usage': usage})
-    return ScriptedModel(steps)
-
-
-def current_demo_turns() -> list[dict]:
-    """current 工具面演示脚本（零模型桩用）：取值 → 跨期比较 → 集合排名 → 结构化终答。"""
-    from .stubs import PERIOD_P1, PERIOD_P2, PRODUCT_DEMO, PRODUCT_POOL
-    pool_ids = [p['product_id'] for p in PRODUCT_POOL]
-
-    def call(name: str, **kwargs) -> dict:
-        return {'name': name, 'arguments': kwargs}
-
-    return [
-        {'content': '先查分析对象两期的核心指标现状，再决定是否补查。',
-         'tool_calls': [call('get_metric_values',
-                             scope={'kind': 'product_ids', 'product_ids': [PRODUCT_DEMO]},
-                             metrics=['M1', 'M2'], period_id=PERIOD_P1)]},
-        {'content': '',
-         'tool_calls': [call('compare_periods',
-                             scope={'kind': 'product_ids', 'product_ids': [PRODUCT_DEMO]},
-                             metric='M1',
-                             base_period_id=PERIOD_P1, target_period_id=PERIOD_P2)]},
-        {'content': '',
-         'tool_calls': [call('compare_product_set',
-                             scope={'kind': 'product_ids', 'product_ids': list(pool_ids)},
-                             metric='M1',
-                             kind='rank', period_id=PERIOD_P1)]},
-        {'content': (
-            '## 结论\n'
-            '分析对象两期订单下滑明显；结合单期读数与全池对照，当前优先处理曝光侧收缩，'
-            '而不是素材质量本身 [E3]。\n\n'
-            '## 关键发现\n'
-            '- M1 订单量：基期 3900 单 → 对比期 2600 单，变化 -1300 单（-33.3%）[E3]。\n'
-            '- M2 播放量：基期 260000；对比期读数本次未取到（unknown），不外推 [E2]。\n'
-            '- 全池 M1 单期对照基准 3900 单，样本=目录内商品（Demo 口径）[E4]。\n\n'
-            '## 下一步\n'
-            '- 先核对曝光收缩是否伴随发布频次下降，再决定是否补内容 [E3]。\n'
-            '- 若成立，优先恢复内容供给并观察下一窗口，暂不动价格。\n\n'
-            '## 重要限制\n'
-            '- 以上为两期窗口内的变化，不外推长期趋势；机制因果未被证明。\n'
-            '- 引用核验只证明引用真实存在，不自动证明整句结论；数值口径以工具返回为准。'),
-         'tool_calls': []},
-    ]
-
-
-def build_stub_app(*, turns: list[dict] | None = None, knowledge_retriever: Any | None = None,
-                   transport: Any | None = None, **kwargs: Any) -> FastAPI:
-    """使用 ScriptedModel、FakeToolServer 与本地上下文创建测试服务。
-
-演示脚本覆盖取值、跨期比较与排名；MCP 会话与 HTTP 客户端共用同一运行状态。
-可注入轮次、传输与检索器以验证失败路径，不写实际模型费用。"""
-    from core.data import oagent_ctx
-
-    from .stubs import FakeMCPQueryClient, FakeToolServer
-
-    script = current_demo_turns() if turns is None else turns
-    return create_app(
-        model_factory=lambda: scripted_model(script),
-        client_factory=lambda: ToolServerClient(transport=transport or FakeToolServer()),
-        mcp_client_factory=lambda run_id, tool_client: FakeMCPQueryClient(run_id, tool_client),
-        ctx_fetcher=oagent_ctx.ctx_fetch,
-        knowledge_retriever=knowledge_retriever,
-        **kwargs)
-
-
-def main() -> None:
-    import os
-
-    import uvicorn
-
-    port = int(os.environ.get('AGENTS_OAGENT_SERVING_PORT') or '8327')
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(name)s %(levelname)s %(message)s')
-    log.info('Agents SDK oagent 服务层（stub 装配）启动：127.0.0.1:%d', port)
-    uvicorn.run(build_stub_app(), host='127.0.0.1', port=port, log_level='warning')
-
-
-if __name__ == '__main__':
-    main()

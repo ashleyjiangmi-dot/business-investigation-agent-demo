@@ -589,16 +589,6 @@ export type DisplayBlocks = {
   blocks: DisplayBlock[]
 }
 
-const DISPLAY_TOP_KEYS = ['schema', 'run_id', 'parse_status', 'blocks'] as const
-const DISPLAY_BLOCK_KEYS = ['index', 'type', 'display', 'verified_facts',
-  'recomputed', 'cohort', 'verification', 'data_issues'] as const
-const DISPLAY_FACT_KEYS = ['handle', 'ref', 'kind', 'metric', 'product_id', 'period_id',
-  'value', 'unit', 'state', 'base', 'target', 'absolute', 'percent', 'direction',
-  //  日期窗口：与服务端 `core.wire_contract._DISPLAY_FACT_KEYS` 同源（任一侧换代必须双处同步）。
-  'window', 'day_series'] as const
-const DISPLAY_DISPLAY_KEYS = ['subjects', 'metrics', 'periods'] as const
-const DISPLAY_RECOMPUTED_KEYS = ['median_by_group', 'direction_counts', 'ranks', 'tool_returned',
-  'group_totals', 'rankings'] as const
 const DISPLAY_GROUP_KEYS = ['metric', 'period_id', 'n', 'median', 'basis', 'members', 'excluded'] as const
 const DISPLAY_MEMBER_KEYS = ['handle', 'product_id', 'value'] as const
 const DISPLAY_EXCLUDED_KEYS = ['handle', 'product_id', 'state'] as const
@@ -630,9 +620,6 @@ const DISPLAY_COHORT_COND_KEYS = ['metric', 'field', 'operator', 'value'] as con
 const DISPLAY_COHORT_ROW_KEYS = ['product_id', 'readings'] as const
 const DISPLAY_COHORT_READING_KEYS = ['metric', 'field', 'value'] as const
 const DISPLAY_COHORT_UNKNOWN_KEYS = ['product_id', 'reasons'] as const
-const DISPLAY_COHORT_DECLARED_KEYS = ['matches', 'match_count', 'scope_count'] as const
-const DISPLAY_COHORT_RECON_KEYS = ['status', 'missing_ids', 'extra_ids', 'duplicate_ids',
-  'match_count_declared', 'match_count_actual', 'scope_count_declared', 'scope_count_actual'] as const
 
 const isObj = (x: unknown): x is Record<string, unknown> =>
   Boolean(x) && typeof x === 'object' && !Array.isArray(x)

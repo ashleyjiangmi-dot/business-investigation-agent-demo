@@ -175,7 +175,6 @@ export default function Page() {
         return
       }
       setFields(data.fields)
-      setScope({ ...EMPTY_SCOPE, ...data.scope })
       const defaults: Record<string, string> = Object.fromEntries(
         (data.fields as EntryField[]).map((f) => [f.name, f.kind === 'select' ? f.options[0] : '']),
       )

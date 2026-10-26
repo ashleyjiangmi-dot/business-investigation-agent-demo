@@ -17,18 +17,18 @@ from mcp.server.stdio import stdio_server
 from mcp.shared.exceptions import MCPError
 
 from agents_oagent.mcp_query_tools import contract
+# 启动环境变量名/默认 base_url 常量单点在 client（本模块启动入口与 client 装配共用同一份，
+# 不再各持一份字面量——漂移会直接导致子进程连错数据服务）。
+from agents_oagent.mcp_query_tools.client import (BASE_URL_ENV, DEFAULT_BASE_URL,
+                                                  RUN_ID_ENV)
 from core.tool_client import ToolHttpError, ToolServerClient
 
 SERVER_NAME = 'oagent-query-tools'
 SERVER_VERSION = '1.0.0'
 
-RUN_ID_ENV = 'OAGENT_MCP_RUN_ID'
-BASE_URL_ENV = 'OAGENT_TOOL_BASE_URL'
-DEFAULT_BASE_URL = 'http://127.0.0.1:8099'
-
 INSTRUCTIONS = (
-    '经营查询工具：单期指标读数、跨期比较、集合比较。本会话已绑定一个已初始化的根任务，'
-    '查询预算、缓存与证据引用由数据服务统一登记；工具参数里不需要也不接受 run_id。'
+    '经营查询工具：单期指标读数、跨期比较、集合比较、条件筛选。本会话已绑定一个已初始化的'
+    '根任务，查询预算、缓存与证据引用由数据服务统一登记；工具参数里不需要也不接受 run_id。'
 )
 
 
@@ -102,6 +102,12 @@ def build_server(run_id: str, client: ToolServerClient, *,
             # 让非法输入变成另一种请求，必须在进 to_request 之前拦下（MCP Client 不代校验）。
             return _error('参数类型不合法：%s（见 tools/list 的 inputSchema）；'
                           '未向数据服务发出查询。' % '；'.join(type_errors))
+        time_errors = contract.check_time_groups(tool, args)
+        if time_errors:
+            # 时间键全缺：数据层对 compare_periods 会静默回退默认周期对（p1→p2），
+            # 在适配层按 Schema oneOf 的承诺拒绝；半对/混用仍由数据层按错误码拒绝。
+            return _error('参数不完整：%s（见 tools/list 的 inputSchema）；'
+                          '未向数据服务发出查询。' % '；'.join(time_errors))
         request = contract.to_request(tool, args)   # 固定 op 映射；多余键（含 run_id）不进 request
         try:
             # 同步 httpx 客户端放到工作线程：事件循环不被阻塞（list_tools/ping 仍可应答）；

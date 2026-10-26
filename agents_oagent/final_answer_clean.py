@@ -283,10 +283,12 @@ def clean_final_answer(text: str) -> str:
     if not text or not text.strip():
         return text
     # 1) 思维链标记：成对块整体删；只剩孤立结束标签时（中转站吃掉开始标签），
-    #    结束标签之前按定义就是思考内容 ⇒ 只取其后正文（后面为空就是真的没有终答）。
+    #    首个孤立结束标签之前按定义就是思考内容 ⇒ 只截到**首个**孤立 CLOSE。
+    #    其后若还有孤立 CLOSE（两个开始标签都被吃掉），两者之间的内容按定义是正文
+    #    ⇒ 只剥标签本身、不丢内容（截到最后一个会把两标签间的正文整段丢掉）。
     t = _THINK_PAIR_RE.sub('', text)
     if CLOSE in t:
-        t = t[t.rindex(CLOSE) + len(CLOSE):]
+        t = t[t.index(CLOSE) + len(CLOSE):]
     t = t.replace(OPEN, '').replace(CLOSE, '')
     # 英文自述开头只清理到首个标题或结论式开头，避免删除正式内容。
     paras = _paras(t)

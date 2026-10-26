@@ -8,9 +8,7 @@
 import calendar
 import copy
 import datetime as _dt
-import os
 import re
-import sys
 
 from . import period_view_generator as PVG   # noqa: E402
 from . import operating_catalog as OC        # noqa: E402  （日级覆盖/模拟业务日单点）

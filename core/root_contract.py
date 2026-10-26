@@ -2,14 +2,15 @@
 """根 Agent 的预算、轮次上限、工具响应分类与知识检索合同。
 
 只维护常量、判据与响应形状，不承载 Agent 循环、运行状态或展示投影。
-预算上限来自 operating_agent_brief；查询尝试含被拒、重复与缓存命中。
+预算上限来自 operating_agent_brief；有效查询额度只计实际执行的数据查询——
+执行前拒绝与缓存命中不计，unknown/no-data 结果仍计（权威语义＝core/data/oagent_ctx）。
 运行时按实际开放的工具族装配预算视图。"""
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from .data import operating_agent_brief as OAB  # noqa: F401  （OAB 供本文件预算常量取数）
+from .data import operating_agent_brief as OAB
 
 from .knowledge import DOC_TYPES, GOVERNANCE_FIELDS   # noqa: E402
 
@@ -20,7 +21,7 @@ BUDGET_LIMITS = {'queries': OAB.OAGENT_ROOT_BUDGET['period_query_attempts'],
 OAGENT_CONTRACT_VERSION = 'oagent_root_v1'   # 与 oagent_ctx.OAGENT_CONTRACT_VERSION 同值
 
 _BUDGET_REJECT_DETAIL = {
-    'queries': '根任务周期查询尝试已达上限 %d（含被拒与重复；整体调用限制不可绕过）',
+    'queries': '根任务周期查询有效执行次数已达上限 %d（整体调用限制不可绕过）',
     'evidence': '根任务单期核对调用已达上限 %d 次（整体调用限制）',
     'specialist': '根任务专项调用已达上限 %d 次（整体调用限制）',
 }
@@ -44,8 +45,11 @@ def local_budget_view(budget: dict, families: tuple = BUDGET_VIEW_FAMILIES) -> d
     if 'specialist' in families:
         out['specialist_calls'] = int(budget.get('specialist') or 0)
         out['specialist_calls_max'] = BUDGET_LIMITS['specialist']
-    out['note'] = ('客户端预算镜像：先查后扣，被拒/重复/缓存命中同样计尝试；'
-                   '服务端 root_budget 为权威计数')
+    # 预算语义单点＝core/data/oagent_ctx 的权威口径（queries_attempted 只计实际执行的数据
+    # 查询）；本 note 与服务端 root_budget.note 同文，四个 MCP 查询工具与 oagent_query 共用，
+    # 调用方不再各自覆写第二份文案。
+    out['note'] = ('有效查询额度只计实际执行的数据查询；执行前拒绝与缓存命中不计，'
+                   'unknown/no-data 仍计；服务端 root_budget 为权威计数')
     return out
     # 注：period_count（成功查询镜像）属服务端 pctx 统计，客户端不镜像（无法可靠对齐）。
 

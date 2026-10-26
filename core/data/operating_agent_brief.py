@@ -7,8 +7,6 @@ oagent_period_brief 描述查询能力与请求形状，不安排查询路线或
 商品身份复用 oi03_brief 与 period_view_generator，时间约束来自原生输入。"""
 import hashlib
 import json
-import os
-import sys
 
 from . import oi03_brief as OB                    # noqa: E402
 from . import period_view_generator as PVG        # noqa: E402
@@ -29,11 +27,7 @@ OAGENT_ROOT_BUDGET = {'period_query_attempts': 6, 'evidence_calls': 2, 'speciali
 def oagent_period_brief_contract(legacy_compat=False):
     """周期查询请求形状、操作能力与语义合同。"""
     metrics = '；'.join('%s %s（%s，%s）' % (k, v['name'], v['unit'], v['role'])
-                       for k, v in (('M1', {'name': '订单量', 'unit': '单', 'role': '结果'}),
-                                    ('M2', {'name': '播放量', 'unit': '次', 'role': '过程'}),
-                                    ('M3', {'name': '点击率', 'unit': '比率（条均，非曝光加权）', 'role': '过程'}),
-                                    ('M4', {'name': '千次播放订单 OPM', 'unit': '单/千次播放', 'role': '结果'}),
-                                    ('M5', {'name': '千次播放成交额 GPM', 'unit': '元/千次播放（VV 加权）', 'role': '结果'})))
+                       for k, v in OB.METRIC_DISPLAY)
     if legacy_compat:
         operation_contract = (
             'diff（同对象同指标 target−base 与百分比差，需 base_period_id/target_period_id）；'
@@ -159,11 +153,7 @@ def oagent_period_brief():
                        % (p['period_id'], p['period_label'], p['period_start_date'],
                           p['period_end_date'], p['length_days']) for p in PVG.PERIODS)
     metrics = '；'.join('%s %s（%s，%s）' % (k, v['name'], v['unit'], v['role'])
-                       for k, v in (('M1', {'name': '订单量', 'unit': '单', 'role': '结果'}),
-                                    ('M2', {'name': '播放量', 'unit': '次', 'role': '过程'}),
-                                    ('M3', {'name': '点击率', 'unit': '比率（条均，非曝光加权）', 'role': '过程'}),
-                                    ('M4', {'name': '千次播放订单 OPM', 'unit': '单/千次播放', 'role': '结果'}),
-                                    ('M5', {'name': '千次播放成交额 GPM', 'unit': '元/千次播放（VV 加权）', 'role': '结果'})))
+                       for k, v in OB.METRIC_DISPLAY)
     return (
         'pctx_v1 周期查询能力说明（%s）：\n'
         '[1] 粒度与窗口：日级事实为最细粒度（覆盖 %s~%s，模拟业务日 %s，「昨天」=%s）；'

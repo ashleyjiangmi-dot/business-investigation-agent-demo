@@ -55,11 +55,9 @@ export type Step = {
 
 export type Trace = {
   steps: Step[]
-  /** Thought 计划参数与 CALL success 终账参数不一致的次数 */
-  mismatches: number
 }
 
-export const EMPTY_TRACE: Trace = { steps: [], mismatches: 0 }
+export const EMPTY_TRACE: Trace = { steps: [] }
 
 const join = (parts: (string | undefined | null)[]) => parts.filter(Boolean).join(' · ')
 const list = (v: unknown) => (Array.isArray(v) ? v.map(String).join('/') : v == null ? '' : String(v))
@@ -399,7 +397,7 @@ export function applyTraceEvent(
       params = null
     }
     steps.push(newStep(String(d.step_id ?? ''), tool, params, scope, 'running'))
-    return { steps, mismatches: trace.mismatches }
+    return { steps }
   }
 
   const idx = steps.findIndex((s) => s.key === String(d.step_id ?? ''))
@@ -417,7 +415,7 @@ export function applyTraceEvent(
   } else {
     steps.push(done) // start 帧丢失时按终账补一条（不猜过程，文案中性）
   }
-  return { steps, mismatches: trace.mismatches }
+  return { steps }
 }
 
 /**

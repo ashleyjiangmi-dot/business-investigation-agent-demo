@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from agents import Agent, MaxTurnsExceeded, Runner
@@ -301,13 +301,17 @@ async def arun_agent(run_input: Mapping[str, Any], *, client: ToolServerClient,
                      max_turns: int = MAX_MODEL_REQUESTS,
                      mcp_client_factory: Any | None = None) -> AgentRunResult:
     """非流式入口（脚本/单测用）：排空同一条流式实现、丢弃中间事件。
-    `astream_agent` 的每条出口路径都以结果项收尾，故循环后 result 必已绑定。"""
-    result: AgentRunResult
+    `astream_agent` 的每条出口路径都以结果项收尾；生成器未按合同给出结果项时显式报
+    合同违规（否则 result 未绑定会以 UnboundLocalError 掩盖真实成因）。"""
+    result: AgentRunResult | None = None
     async for item in astream_agent(run_input, client=client, retriever=retriever,
                                     model=model, max_turns=max_turns,
                                     mcp_client_factory=mcp_client_factory):
         if item.result is not None:
             result = item.result
+    if result is None:
+        raise RuntimeError('astream_agent 生成器提前终止：未按合同产出结果项（run_id=%r）'
+                           % (str(run_input.get('run_id') or ''),))
     return result
 
 

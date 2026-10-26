@@ -107,24 +107,13 @@ export default function DisplayBlocks({
           <div className="tb-head"><span className="tb-kind">关键对象数据</span></div>
           {totals.length > 0 && !crossCategoryComparison && <GroupTotalsPanel totals={totals} scope={effScope} />}
           {orderedGroups.map((g) => (
-            <TypedGroup key={g.key} g={g} cite={cite} scope={effScope} dupCohorts={dupCohorts}
+            <TypedGroup key={g.key} g={g} cite={cite} dupCohorts={dupCohorts}
               shownHandles={globalShownHandles} />
           ))}
         </section>
       )}
     </div>
   )
-}
-
-/**
- * 仅当调用方传入与实际周期语义相同的 period 时，才可从 metaText 去掉重复段。
- * 入口 `period_ids` 是可查询范围，不能作为实际周期传入；未传时原样展示块的周期声明。
- */
-function stripMetaPeriod(meta: string | null, period: string | null): string | null {
-  if (!meta) return meta
-  if (!period) return meta
-  const kept = meta.split('\u3000').filter((seg) => seg !== `周期：${period}`)
-  return kept.length ? kept.join('\u3000') : null
 }
 
 function declaredMetaPeriod(meta: string | null): string | null {
@@ -410,14 +399,12 @@ function FactTable({ rows, cite }: { rows: FactRowView[]; cite?: CiteRender }) {
  *  复算集合（中位数成员与排除项）、排名、工具返回基准。展开后看到的是数据底稿。
  *  排除项与首屏**同一判据**（`firstScreenRender`）——首屏已逐条展示的行不再在依据区
  *  复述；声明对象名单只列首屏未出现的那些（完整名单与首屏重复的部分不再铺两遍）。 */
-function Basis({ g, cite, shownHandles: globalShown }: {
+function Basis({ g, cite, shownHandles: shown }: {
   g: BlockGroupView
   cite?: CiteRender
-  /** **跨组**首屏已出现的 handle 集合（未传＝退回本组判据，旧调用行为不变） */
-  shownHandles?: ReadonlySet<string>
+  /** **跨组**首屏已出现的 handle 集合（依据区据此排除首屏已出现的行，不重复铺） */
+  shownHandles: ReadonlySet<string>
 }) {
-  const shownHandles = shownHandlesForGroup(g)
-  const shown = globalShown ?? shownHandles
   const hiddenRows = g.changeRows.filter((r) => !shown.has(r.handle)).length
   const firstScreenObjects = new Set(
     g.changeRows.filter((r) => shown.has(r.handle)).map((r) => r.objectText))
@@ -873,15 +860,12 @@ function ToolRankingSection({ rankings, cite }: { rankings: ToolRankingView[]; c
 }
 
 /** 一组关键结果：一个区块外壳（一份依据区），组内逐块元信息行/数据区/局部说明。 */
-function TypedGroup({ g, cite, scope, dupCohorts, panelPeriod, shownHandles }: {
+function TypedGroup({ g, cite, dupCohorts, shownHandles }: {
   g: BlockGroupView
   cite?: CiteRender
-  scope?: TraceScope
   dupCohorts?: ReadonlySet<string>
-  /** 仅有与实际周期语义相同的 period 时用于去重；入口可查询周期范围不得作为该值 */
-  panelPeriod?: string | null
   /** 跨组首屏已出现的 handle 集合（依据区排除用，见 Basis） */
-  shownHandles?: ReadonlySet<string>
+  shownHandles: ReadonlySet<string>
 }) {
   const splitCandidateBlocks = g.type === 'candidate_list' && g.blocks.length > 1
   const renderedBlocks = g.blocks.flatMap((block, blockIndex) => {
@@ -917,10 +901,10 @@ function TypedGroup({ g, cite, scope, dupCohorts, panelPeriod, shownHandles }: {
     })
     return [block.key, kept.join('　') || null] as const
   }))
-  const commonMetaText = stripMetaPeriod(commonMeta.join('　') || null, panelPeriod ?? null)
+  const commonMetaText = commonMeta.join('　') || null
   const groupDeclaredPeriod = declaredMetaPeriod(commonMetaText)
     ?? (renderedBlocks.length === 1
-      ? declaredMetaPeriod(stripMetaPeriod(metaByBlock.get(renderedBlocks[0].block.key) ?? null, panelPeriod ?? null))
+      ? declaredMetaPeriod(metaByBlock.get(renderedBlocks[0].block.key) ?? null)
       : null)
   return (
     <section className="tb-block tb-group" data-type={g.type}>
@@ -931,7 +915,6 @@ function TypedGroup({ g, cite, scope, dupCohorts, panelPeriod, shownHandles }: {
 
       {renderedBlocks.map(({ block: b, blockIndex, rows, memberships }) => {
         const metaText = metaByBlock.get(b.key) ?? null
-        const visibleMeta = stripMetaPeriod(metaText, panelPeriod ?? null)
         return (
           <div className="tb-unit" key={b.key}>
             {splitCandidateBlocks && (
@@ -939,7 +922,7 @@ function TypedGroup({ g, cite, scope, dupCohorts, panelPeriod, shownHandles }: {
                 {b.subjectIds.length > 0 ? `（${b.subjectIds.length} 个）` : ''}</strong></p>
             )}
             {/* cohort 块的 metaText 与权威集合段重复（命中分母/周期/条件已承载），不渲染。 */}
-            {!b.cohort && visibleMeta && <p className="tb-meta">{visibleMeta}</p>}
+            {!b.cohort && metaText && <p className="tb-meta">{metaText}</p>}
             {memberships.map((membership) => (
               <div className="tb-candidate-membership" key={membership.blockKey}>
                 <p className="tb-candidate-membership-head">候选商品（{membership.members.length} 个）</p>
@@ -971,7 +954,7 @@ function TypedGroup({ g, cite, scope, dupCohorts, panelPeriod, shownHandles }: {
               </p>
             )}
             {splitCandidateBlocks && rows.length > 0 && <FactRows rows={rows} cite={cite}
-              declaredPeriod={declaredMetaPeriod(visibleMeta)} />}
+              declaredPeriod={declaredMetaPeriod(metaText)} />}
           </div>
         )
       })}

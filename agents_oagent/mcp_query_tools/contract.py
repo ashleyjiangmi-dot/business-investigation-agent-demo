@@ -438,6 +438,20 @@ def build_input_schemas():
     return {name: copy.deepcopy(builder()) for name, builder in _BUILDERS.items()}
 
 
+# check_arg_types 专用只读快照：每次工具调用会经本函数 2 次（调用前钩子+请求构造各一次，
+# 输出钩子再来一轮），逐次深拷贝全量 Schema 纯属浪费。快照只被本函数读取、绝不改写；
+# 公共 `build_input_schemas` / `tool_specs` 保持每次深拷贝的「互不共享可变对象」合同不变。
+_SCHEMA_PROPS_CACHE: dict | None = None
+
+
+def _schema_props(tool: str) -> dict:
+    global _SCHEMA_PROPS_CACHE
+    if _SCHEMA_PROPS_CACHE is None:
+        _SCHEMA_PROPS_CACHE = {name: schema['properties']
+                               for name, schema in build_input_schemas().items()}
+    return _SCHEMA_PROPS_CACHE[tool]
+
+
 def tool_specs():
     """返回 MCP 工具的描述与 inputSchema，作为接口定义的唯一来源。"""
     schemas = build_input_schemas()
@@ -472,7 +486,7 @@ def check_arg_types(tool, args):
     """
     if tool not in TOOL_OPS:
         raise ValueError('未知 MCP 工具: %r' % (tool,))
-    props = build_input_schemas()[tool]['properties']
+    props = _schema_props(tool)
     errors = []
 
     def _check_array(key, value, items):
@@ -509,6 +523,24 @@ def check_arg_types(tool, args):
             errors.append('%s 未知参数：%s（可用 %s）'
                           % (tool, ','.join(unknown), '/'.join(sorted(allowed_keys))))
     return errors
+
+
+def check_time_groups(tool, args):
+    """适配层时间键必给检查：`compare_periods` 时间键一个都没给时拒绝。
+
+    为什么只查「全缺」这一种形态：数据层对 diff 在不显式传周期对时会回退默认
+    p1→p2（命名常量语义，供内部直连调用方使用），经 MCP 工具面漏给时间会拿到
+    模型未请求周期对的比较结果——静默成功，不是业务拒绝，与 Schema oneOf
+    「恰给一组」的承诺不符。半对/混用/越界仍由数据层按其错误码权威拒绝，
+    本函数不预判业务语义（与 check_arg_types 同一条纪律：适配层只拦「会被
+    静默改写」的输入，不复刻业务校验）。返回人类可读错误列表；空列表＝通过。
+    """
+    if tool != 'compare_periods':
+        return []
+    if any(key in args for key in _ALL_TIME_KEYS):
+        return []
+    return ['compare_periods 需给出一种时间参数（%s），不得省略'
+            % ' / '.join('+'.join(group) for group in PAIR_TIME_GROUPS)]
 
 
 def to_request(tool, args):
@@ -548,8 +580,10 @@ def to_request(tool, args):
         # （`unknown_metric` / `unknown_operator` / `invalid_threshold` / `field_period_mode_mismatch`）
         # 与时间形态（`time_semantics_invalid`）全部由数据层按 `COHORT_REQUEST_KEYS` 裁决
         # （硬边界：数据层是业务拒绝的唯一权威）。因此这里原样搬运全部业务键，
-        # 只丢掉运行身份键 `run_id`（模型不可更换根任务）。
-        req = {k: copy.deepcopy(v) for k, v in args.items() if k != 'run_id'}
+        # 只丢两个非业务键：`run_id`（模型不可更换根任务）与 `op`（适配层固定映射键——
+        # Schema 的 additionalProperties:false 本就不含它，直接调用方误传时按固定映射丢弃，
+        # 不静默采信调用方传入的 op 值）。
+        req = {k: copy.deepcopy(v) for k, v in args.items() if k not in ('run_id', 'op')}
         req['op'] = op
         req['scope'] = copy.deepcopy(args['scope'])
         req['conditions'] = copy.deepcopy(args['conditions'])

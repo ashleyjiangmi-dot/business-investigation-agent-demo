@@ -177,6 +177,18 @@ def _valid_intent(obj) -> bool:
     return all(isinstance(b, dict) for b in blocks)
 
 
+def _list_or_empty(value) -> list:
+    """模型声明面归一：list 才保留（标量笔误按字符迭代会把 'E1' 拆成 'E'/'1' 污染集合；
+    非 list 视为缺省空列表，单块畸形不炸整份展示）。"""
+    return value if isinstance(value, list) else []
+
+
+def _block_calculation(block: dict) -> dict:
+    """calculation 归一：非 dict（标量/数组笔误）按缺省 {}（`.get` 不再 AttributeError）。"""
+    calc = block.get('calculation')
+    return calc if isinstance(calc, dict) else {}
+
+
 def intent_handles(intent: dict) -> list[str]:
     """展示意图引用集合（basis ∪ calculation.input_handles）按 run 去重。
 
@@ -193,10 +205,9 @@ def intent_handles(intent: dict) -> list[str]:
     for b in ((intent or {}).get('blocks') or []):
         if not isinstance(b, dict):
             continue
-        for h in (b.get('basis_handles') or []):
+        for h in _list_or_empty(b.get('basis_handles')):
             _add(h)
-        calc = b.get('calculation') or {}
-        for h in (calc.get('input_handles') or []):
+        for h in _list_or_empty(_block_calculation(b).get('input_handles')):
             _add(h)
     return out
 
@@ -376,9 +387,9 @@ def _block_handles(block: dict) -> list[str]:
         if s and s not in out:
             out.append(s)
 
-    for h in (block.get('basis_handles') or []):
+    for h in _list_or_empty(block.get('basis_handles')):
         _add(h)
-    for h in ((block.get('calculation') or {}).get('input_handles') or []):
+    for h in _list_or_empty(_block_calculation(block).get('input_handles')):
         _add(h)
     return out
 
@@ -669,6 +680,11 @@ def _recompute_median_groups(facts: dict, input_handles: list[str] | None,
 
 
 def _recompute_directions(facts: dict) -> dict:
+    """方向计数＝**块级读数**：块内全部已核验 diff 事实（含 basis 携带的跨引用 diff——
+    verify_block 对 basis 跨指标引用显式 warning 不降级，方向读数同理消费）。
+    与 `_recompute_median_groups` 只按 calculation.input_handles 统计的**声明集合口径
+    有意不同**：中位数的统计范围必须由声明集收口，方向计数描述的是整块分析对象集
+    （10-23 审查 P2-20 复核结论＝设计意图，test_uix06_phase2 C 类真实形状钉住）。"""
     counts = {'up': 0, 'down': 0, 'flat': 0}
     other = []
     n = 0
@@ -793,7 +809,9 @@ def _recompute_group_totals(block: dict, facts: dict, subjects: list[str],
 
 def _recompute_ranks(facts: dict, median_groups: list[dict], subjects: list[str]) -> list[dict]:
     """subjects 在（指标,周期）分组内的名次：rank_desc=自高第几、rank_asc=自低第几。
-    名次只来自已回查原始值与成员集合；模型文字名次一律不采信。"""
+    名次只来自已回查原始值与成员集合；模型文字名次一律不采信。范围口径＝**块级**：
+    名次分母（成员集合）来自 median 的声明集统计，被排名对象由 `subjects` 声明过滤——
+    与 median 的声明集合口径分工有意不同（10-23 审查 P2-20 复核结论＝设计意图）。"""
     out = []
     for g in median_groups:
         vals = [m['value'] for m in g['members']]
@@ -1015,9 +1033,9 @@ def _verify_cohort_block(*, run_id, index, block, source, handles, handle_status
     return {
         'index': index,
         'type': COHORT_BLOCK_TYPE,
-        'display': {'subjects': block.get('subjects') or [],
-                    'metrics': block.get('metrics') or [],
-                    'periods': block.get('periods') or []},
+        'display': {'subjects': _list_or_empty(block.get('subjects')),
+                    'metrics': _list_or_empty(block.get('metrics')),
+                    'periods': _list_or_empty(block.get('periods'))},
         'handle_status': handle_status,
         'verification': {
             'refs': {'total': len(handles), 'verified_n': len(facts_cohort),
@@ -1071,7 +1089,7 @@ def verify_block(run_id: str, index: int, block: dict, source,
     data_issues = []
     internal_issues = []
     identity_warnings = []
-    for h in (block.get('basis_handles') or []):
+    for h in _list_or_empty(block.get('basis_handles')):
         hs = handle_status.get(str(h))
         if hs and hs != HANDLE_VERIFIED:
             internal_issues.append('basis 引用未核验/缺原始值：%s（%s）' % (h, hs))
@@ -1086,10 +1104,11 @@ def verify_block(run_id: str, index: int, block: dict, source,
             basis_data_issues=data_issues,
             basis_internal_issues=internal_issues)
 
-    # 核对展示声明与证据中的对象、指标和期间。
-    metrics_declared = [str(x) for x in (block.get('metrics') or [])]
-    periods_declared = [str(x) for x in (block.get('periods') or [])]
-    subjects_declared = [str(x) for x in (block.get('subjects') or [])]
+    # 核对展示声明与证据中的对象、指标和期间（声明面归一：标量笔误按缺省空集，
+    # 不按字符迭代污染声明集——单块畸形不炸整份展示）。
+    metrics_declared = [str(x) for x in _list_or_empty(block.get('metrics'))]
+    periods_declared = [str(x) for x in _list_or_empty(block.get('periods'))]
+    subjects_declared = [str(x) for x in _list_or_empty(block.get('subjects'))]
     for h, f in facts.items():
         fm = str(f.get('metric') or '')
         if metrics_declared and fm and fm not in metrics_declared:
@@ -1117,7 +1136,14 @@ def verify_block(run_id: str, index: int, block: dict, source,
                     identity_warnings.append(
                         '周期口径错配（技术读数）：%s 读数周期 %s ∉ block.periods=%s'
                         % (h, sorted(extra), periods_declared))
-    calc = block.get('calculation') or {}
+    calc = _block_calculation(block)
+    # 复算的范围口径（10-23 审查 P2-20 复核结论＝设计意图，注释钉住差异）：
+    # - median：只按 calculation.input_handles 声明集统计（basis 不能扩充中位数统计范围）；
+    # - direction_counts / ranks：**块级读数**，消费块内全部已核验事实（含 basis 携带的
+    #   跨引用——与「basis 跨指标引用 warning 不降级」同一哲学；UIX06 C 类真实形状钉住），
+    #   名次分母仍来自 median 的声明集、被排名对象由 subjects 声明过滤；
+    # - rankings（工具权威整体排名，集合级引用）与 group_totals（subjects/metrics/periods
+    #   各自声明约束）各有权威范围，不经 input_handles 过滤。
     groups = _recompute_median_groups(facts, calc.get('input_handles'),
                                       periods_declared)
     dirs = _recompute_directions(facts)
@@ -1139,9 +1165,9 @@ def verify_block(run_id: str, index: int, block: dict, source,
     return {
         'index': index,
         'type': str(block.get('type') or ''),
-        'display': {'subjects': block.get('subjects') or [],
-                    'metrics': block.get('metrics') or [],
-                    'periods': block.get('periods') or []},
+        'display': {'subjects': _list_or_empty(block.get('subjects')),
+                    'metrics': _list_or_empty(block.get('metrics')),
+                    'periods': _list_or_empty(block.get('periods'))},
         'handle_status': handle_status,
         'verification': {
             'refs': {'total': len(handles), 'verified_n': len(facts),
@@ -1457,11 +1483,12 @@ def category_total_fallback_blocks(snapshots, run_id: str,
                 group['totals'].append(entry)
 
     blocks: list[dict] = []
-    for offset, group in enumerate(groups):
+    for group in groups:
         if not group['totals']:
             continue
         blocks.append({
-            'index': int(start_index) + offset,
+            # 序号按实际产块回收（跳过无 totals 的组不留空洞）
+            'index': int(start_index) + len(blocks),
             'type': 'comparison',
             'display': {'subjects': sorted(str(p) for p in group['product_ids']),
                         'metrics': list(group['metrics']),

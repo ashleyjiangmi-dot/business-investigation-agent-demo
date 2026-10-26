@@ -16,7 +16,11 @@ _HIDDEN_REF = '〔无效引用，已隐藏〕'
 _HIDDEN_PROBE_RE = re.compile(r'\[E[^\]]*\]')
 # 纯格式错误与「真实句柄」的判别：`[E<数字>]` 才是可送核验的句柄形态；区间/列表/缺号
 # 形态（`[E9-E13]`/`[E9,E13]`/`[E]` 等）是引用格式错误，直接从可见正文移除。
+# 畸形判别边界：内形以 E 起头且只含 E/数字/空白/分隔符（区间/列表形态 `E9-E13`/`E9,E13`
+# 含第二个 E）才算引用格式错误；含其它字母的 `[E...]`（如正文英文词 `[Excel]`）不是
+# 引用尝试，原样保留、不计格式错误。
 _CANON_HANDLE_RE = re.compile(r'E\d+')
+_MALFORMED_INNER_RE = re.compile(r'^E[\dE\s,，、;；\-–—/~～到至]*$')
 _CANON_RE = re.compile(r'(?:pqev|pev|qev|ev):[A-Za-z0-9_:.\-]+')
 
 # 终答分支原因码（诊断；取值集合见 final_branch_reason）
@@ -124,8 +128,10 @@ def _redact_citations(text, guard):
     """从用户可见正文处理引用（确定性、fail-closed），并分开两类异常：
 
     - **纯格式错误**（`[E9-E13]`/`[E9,E13]`/`[E]` 等 `_HIDDEN_PROBE_RE` 命中但不是
-      `[E<数字>]` 的形态）：不是可核验引用，直接从可见正文移除，不留占位、不触发
-      `evidence_unverified`（原文与计数仍保留在运行记录/`evidence_check`）。
+      `[E<数字>]` 的形态，且内形只含 E/数字/分隔符）：不是可核验引用，直接从可见正文
+      移除，不留占位、不触发 `evidence_unverified`（原文与计数仍保留在运行记录/
+      `evidence_check`）。含其它字母的 `[E...]`（如英文词 `[Excel]`）不属引用尝试，
+      原样保留。
       即使守卫不可用也可判定并移除——格式错误与核验服务无关。
     - **真实句柄但本轮未签发/被拒**（`[E99]` 等 canonical handle 不在已核验 handle 集）：
       隐藏为 `_HIDDEN_REF`，不冒充有效依据；由 `isolate_unverified_claims` 做局部提示。
@@ -142,6 +148,8 @@ def _redact_citations(text, guard):
         inner = token[1:-1]
         if _CANON_HANDLE_RE.fullmatch(inner):
             return token                     # 真实句柄形态：留给 guard 判定
+        if not _MALFORMED_INNER_RE.match(inner):
+            return token                     # 含其它字母＝非引用尝试的正文：原样保留
         malformed[0] += 1
         return ''                            # 纯格式错误：静默移除，不占位
 
@@ -159,6 +167,8 @@ def _redact_citations(text, guard):
         if _CANON_HANDLE_RE.fullmatch(inner):
             hidden[0] += 1
             return _HIDDEN_REF
+        if not _MALFORMED_INNER_RE.match(inner):
+            return token                     # 含其它字母＝非引用尝试的正文：原样保留
         malformed[0] += 1
         return ''                            # 区间/列表等畸形形态：移除，不展开、不猜意图
 

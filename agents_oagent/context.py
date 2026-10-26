@@ -35,8 +35,8 @@ def _window_key(win: Any) -> str | None:
     if not isinstance(win, dict):
         return None
     start, end = win.get('start_date'), win.get('end_date')
-    if not start and not end:
-        return None
+    if not start or not end:
+        return None    # 半窗不构成身份：任一端缺失即无窗口身份，不产出 'None~2026-09-14' 这类字面串
     return '%s~%s' % (start, end)
 
 
@@ -337,13 +337,13 @@ class RunContext:
         return decision
 
     def budget_reject(self, tool_name: str, detail: str) -> dict:
-        """生成额度拒绝响应，仅展示当前查询族预算。"""
-        response = budget_reject_response(FAMILY_BY_TOOL[tool_name], detail, self.budget,
-                                          BUDGET_FAMILIES)
-        if tool_name == 'oagent_query':
-            response['root_budget']['note'] = (
-                '有效查询额度只计实际执行的数据查询；执行前拒绝与缓存命中不计，unknown/no-data 仍计')
-        return response
+        """生成额度拒绝响应，仅展示当前查询族预算。
+
+        预算语义 note 已单点在 `core.root_contract.local_budget_view`（与服务端
+        `root_budget.note` 同文）——oagent_query 原先的专属覆写已删除，四个 MCP
+        查询工具与本工具共用同一份「只计实际执行」文案，不再两处维护。"""
+        return budget_reject_response(FAMILY_BY_TOOL[tool_name], detail, self.budget,
+                                      BUDGET_FAMILIES)
 
     def charge(self, tool_name: str) -> None:
         """发出业务请求时**乐观暂记**本地额度；收到 root_budget 后以服务端权威读数校准。
